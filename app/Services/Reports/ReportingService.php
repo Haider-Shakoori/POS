@@ -672,7 +672,7 @@ class ReportingService
         $hourExpression = $this->hourBucketExpression($column);
 
         if ($itemFiltered) {
-            return DB::table('sale_items')
+            return $this->normalizeNetTotalRows(DB::table('sale_items')
                 ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                 ->join('products', 'products.id', '=', 'sale_items.product_id')
                 ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
@@ -685,10 +685,10 @@ class ReportingService
                 ->groupByRaw($hourExpression)
                 ->orderByDesc('sales_count')
                 ->limit(24)
-                ->get();
+                ->get());
         }
 
-        return DB::table('sales')
+        return $this->normalizeNetTotalRows(DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
             ->when(! empty($filters['customer_id']), fn ($q) => $q->where('customer_id', (int) $filters['customer_id']))
             ->selectRaw($hourExpression.' as hour')
@@ -697,7 +697,7 @@ class ReportingService
             ->groupByRaw($hourExpression)
             ->orderByDesc('sales_count')
             ->limit(24)
-            ->get();
+            ->get());
     }
 
     private function weekdayPerformance(CarbonImmutable $from, CarbonImmutable $to, array $filters): Collection
@@ -707,7 +707,7 @@ class ReportingService
         $weekdayExpression = $this->weekdayBucketExpression($column);
 
         if ($itemFiltered) {
-            return DB::table('sale_items')
+            return $this->normalizeNetTotalRows(DB::table('sale_items')
                 ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                 ->join('products', 'products.id', '=', 'sale_items.product_id')
                 ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
@@ -719,10 +719,10 @@ class ReportingService
                 ->selectRaw('SUM(sale_items.line_net_total) as net_total')
                 ->groupByRaw($weekdayExpression)
                 ->orderBy('weekday_index')
-                ->get();
+                ->get());
         }
 
-        return DB::table('sales')
+        return $this->normalizeNetTotalRows(DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
             ->when(! empty($filters['customer_id']), fn ($q) => $q->where('customer_id', (int) $filters['customer_id']))
             ->selectRaw($weekdayExpression.' as weekday_index')
@@ -730,7 +730,16 @@ class ReportingService
             ->selectRaw('SUM(net_total) as net_total')
             ->groupByRaw($weekdayExpression)
             ->orderBy('weekday_index')
-            ->get();
+            ->get());
+    }
+
+    private function normalizeNetTotalRows(Collection $rows): Collection
+    {
+        return $rows->map(function (object $row): object {
+            $row->net_total = Decimal::normalize((string) ($row->net_total ?? 0), 2);
+
+            return $row;
+        });
     }
 
     private function hourBucketExpression(string $column = 'sold_at'): string
