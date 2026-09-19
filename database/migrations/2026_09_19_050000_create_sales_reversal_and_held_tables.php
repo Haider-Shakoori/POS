@@ -82,9 +82,11 @@ return new class extends Migration
         Schema::create('sale_return_stock_allocations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('sale_return_item_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('original_sale_stock_allocation_id')
-                ->constrained('sale_item_stock_allocations')
-                ->restrictOnDelete();
+            $table->unsignedBigInteger('original_sale_stock_allocation_id');
+            $table->foreign(
+                'original_sale_stock_allocation_id',
+                'return_stock_original_fk'
+            )->references('id')->on('sale_item_stock_allocations')->restrictOnDelete();
             $table->foreignId('product_batch_id')->nullable()->constrained('product_batches')->restrictOnDelete();
             $table->foreignId('stock_movement_id')->unique()->constrained('stock_movements')->restrictOnDelete();
             $table->decimal('quantity_base', 20, 6);
@@ -99,9 +101,11 @@ return new class extends Migration
         Schema::create('inventory_cost_layer_restorations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('sale_return_item_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('original_consumption_id')
-                ->constrained('inventory_cost_layer_consumptions')
-                ->restrictOnDelete();
+            $table->unsignedBigInteger('original_consumption_id');
+            $table->foreign(
+                'original_consumption_id',
+                'cost_restore_consumption_fk'
+            )->references('id')->on('inventory_cost_layer_consumptions')->restrictOnDelete();
             $table->foreignId('inventory_cost_layer_id')->nullable();
             $table->foreign(
                 'inventory_cost_layer_id',
