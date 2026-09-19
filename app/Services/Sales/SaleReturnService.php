@@ -305,17 +305,19 @@ class SaleReturnService
             }
         }
 
-        $requestedMethods = collect($data['refunds'] ?? [])
-            ->pluck('payment_method_id')
-            ->map(fn ($id) => (int) $id)
-            ->values();
-        $recordedMethods = $existing->refunds
-            ->pluck('payment_method_id')
-            ->map(fn ($id) => (int) $id)
-            ->values();
+        if (Decimal::isPositive($existing->refund_total)) {
+            $requestedMethods = collect($data['refunds'] ?? [])
+                ->pluck('payment_method_id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
+            $recordedMethods = $existing->refunds
+                ->pluck('payment_method_id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
 
-        if ($requestedMethods->all() !== $recordedMethods->all()) {
-            throw new DomainException('The return idempotency key is already bound to another refund method set.');
+            if ($requestedMethods->all() !== $recordedMethods->all()) {
+                throw new DomainException('The return idempotency key is already bound to another refund method set.');
+            }
         }
     }
 
