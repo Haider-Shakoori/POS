@@ -3,6 +3,7 @@
 namespace App\Services\Inventory;
 
 use App\Enums\StockMovementType;
+use App\Models\GoodsReceiptItem;
 use App\Models\InventoryCostLayer;
 use App\Models\InventoryCostLayerConsumption;
 use App\Models\InventoryCostLayerRestoration;
@@ -104,6 +105,55 @@ class InventoryCostService
             }
 
             return Decimal::round($totalCost, 2);
+        });
+    }
+
+    public function removeForPurchaseReturn(
+        GoodsReceiptItem $receiptItem,
+        string $quantityBase,
+    ): array {
+        return DB::transaction(function () use ($receiptItem, $quantityBase): array {
+            $quantityBase = Decimal::normalize($quantityBase);
+
+            if (! Decimal::isPositive($quantityBase)) {
+                throw new DomainException('Purchase return cost quantity must be greater than zero.');
+            }
+
+            if (! $receiptItem->stock_movement_id) {
+                throw new DomainException('Goods receipt item has no posted stock movement.');
+            }
+
+            $layer = InventoryCostLayer::query()
+                ->where('source_stock_movement_id', $receiptItem->stock_movement_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $layer) {
+                throw new DomainException('The original purchase cost layer is unavailable.');
+            }
+
+            if (Decimal::compare($quantityBase, $layer->remaining_quantity_base) > 0) {
+                throw new DomainException('Purchase return quantity exceeds inventory still available from this receipt.');
+            }
+
+            $costAmount = Decimal::multiplyRounded(
+                $quantityBase,
+                $layer->unit_cost_base,
+                4,
+            );
+
+            $layer->forceFill([
+                'remaining_quantity_base' => Decimal::subtract(
+                    $layer->remaining_quantity_base,
+                    $quantityBase,
+                ),
+            ])->save();
+
+            return [
+                'layer' => $layer,
+                'unit_cost_base' => Decimal::normalize($layer->unit_cost_base, 4),
+                'cost_amount' => $costAmount,
+            ];
         });
     }
 
