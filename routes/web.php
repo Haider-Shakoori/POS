@@ -13,6 +13,9 @@ use App\Http\Controllers\Closing\ShiftClosingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
+use App\Http\Controllers\Inventory\InventoryOperationsController;
+use App\Http\Controllers\Inventory\InventoryWriteoffController;
+use App\Http\Controllers\Inventory\StockCountController;
 use App\Http\Controllers\Inventory\ProductController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
@@ -134,6 +137,19 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/operations', InventoryOperationsController::class)
+            ->middleware('permission:inventory.view')
+            ->name('operations.index');
+        Route::post('/stock-counts', [StockCountController::class, 'store'])
+            ->middleware('permission:inventory.count')
+            ->name('stock-counts.store');
+        Route::post('/stock-counts/{stockCount}/approve', [StockCountController::class, 'approve'])
+            ->middleware('permission:inventory.count.approve')
+            ->name('stock-counts.approve');
+        Route::post('/writeoffs', [InventoryWriteoffController::class, 'store'])
+            ->middleware('permission:inventory.writeoff')
+            ->name('writeoffs.store');
+
         Route::get('/products', [ProductController::class, 'index'])
             ->middleware('permission:inventory.view')
             ->name('products.index');
