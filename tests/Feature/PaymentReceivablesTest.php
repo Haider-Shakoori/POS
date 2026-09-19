@@ -56,6 +56,35 @@ class PaymentReceivablesTest extends TestCase
         $this->bank = PaymentMethod::query()->where('code', 'bank')->firstOrFail();
     }
 
+    public function test_cashier_can_quick_create_customer_from_pos_without_full_customer_manage_permission(): void
+    {
+        $cashier = User::factory()->create();
+        $cashier->roles()->attach(Role::query()->where('name', 'cashier')->firstOrFail());
+
+        $this->assertTrue($cashier->hasPermission('customers.quick_create'));
+        $this->assertFalse($cashier->hasPermission('customers.manage'));
+
+        $this->actingAs($cashier)
+            ->postJson(route('pos.customers.store'), [
+                'name' => 'Quick POS Customer',
+                'phone' => '0700111222',
+                'credit_limit' => '100.00',
+                'opening_balance' => '0.00',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('customer.name', 'Quick POS Customer');
+
+        $this->actingAs($cashier)
+            ->postJson(route('customers.store'), [
+                'name' => 'Forbidden Full Manage Customer',
+                'credit_limit' => '0.00',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('customers', ['name' => 'Quick POS Customer']);
+        $this->assertDatabaseMissing('customers', ['name' => 'Forbidden Full Manage Customer']);
+    }
+
     public function test_full_cash_checkout_records_applied_amount_tender_and_change(): void
     {
         [$product, $piece] = $this->makeProduct('CASH');
