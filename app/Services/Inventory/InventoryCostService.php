@@ -5,10 +5,13 @@ namespace App\Services\Inventory;
 use App\Enums\StockMovementType;
 use App\Models\InventoryCostLayer;
 use App\Models\InventoryCostLayerConsumption;
+use App\Models\InventoryCostLayerRestoration;
 use App\Models\Product;
 use App\Models\SaleItem;
+use App\Models\SaleReturnItem;
 use App\Models\StockMovement;
 use App\Support\Decimal;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class InventoryCostService
@@ -98,6 +101,87 @@ class InventoryCostService
                 ]);
 
                 $totalCost = Decimal::add($totalCost, $fallbackCost, 4);
+            }
+
+            return Decimal::round($totalCost, 2);
+        });
+    }
+
+    public function restoreForReturnItem(
+        SaleReturnItem $returnItem,
+        SaleItem $saleItem,
+        string $quantityBase,
+    ): string {
+        return DB::transaction(function () use ($returnItem, $saleItem, $quantityBase): string {
+            $remaining = Decimal::normalize($quantityBase);
+            $totalCost = '0.0000';
+
+            $consumptions = InventoryCostLayerConsumption::query()
+                ->where('sale_item_id', $saleItem->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($consumptions as $consumption) {
+                if (! Decimal::isPositive($remaining)) {
+                    break;
+                }
+
+                $alreadyRestoredQty = InventoryCostLayerRestoration::query()
+                    ->where('original_consumption_id', $consumption->id)
+                    ->sum('quantity_base');
+                $alreadyRestoredQty = Decimal::normalize((string) $alreadyRestoredQty);
+
+                $available = Decimal::subtract($consumption->quantity_base, $alreadyRestoredQty);
+
+                if (! Decimal::isPositive($available)) {
+                    continue;
+                }
+
+                $take = Decimal::compare($available, $remaining) <= 0 ? $available : $remaining;
+
+                $alreadyRestoredCost = InventoryCostLayerRestoration::query()
+                    ->where('original_consumption_id', $consumption->id)
+                    ->sum('cost_amount');
+                $alreadyRestoredCost = Decimal::normalize((string) $alreadyRestoredCost, 4);
+                $remainingOriginalCost = Decimal::subtract(
+                    $consumption->cost_amount,
+                    $alreadyRestoredCost,
+                    4,
+                );
+
+                $cost = Decimal::compare($take, $available) === 0
+                    ? $remainingOriginalCost
+                    : Decimal::multiplyRounded($take, $consumption->unit_cost_base, 4);
+
+                $layerId = $consumption->inventory_cost_layer_id;
+
+                if ($layerId) {
+                    $layer = InventoryCostLayer::query()->lockForUpdate()->findOrFail($layerId);
+                    $newRemaining = Decimal::add($layer->remaining_quantity_base, $take);
+
+                    if (Decimal::compare($newRemaining, $layer->initial_quantity_base) > 0) {
+                        throw new DomainException('Cost-layer restoration would exceed its original quantity.');
+                    }
+
+                    $layer->forceFill(['remaining_quantity_base' => $newRemaining])->save();
+                }
+
+                InventoryCostLayerRestoration::create([
+                    'sale_return_item_id' => $returnItem->id,
+                    'original_consumption_id' => $consumption->id,
+                    'inventory_cost_layer_id' => $layerId,
+                    'quantity_base' => $take,
+                    'unit_cost_base' => $consumption->unit_cost_base,
+                    'cost_amount' => $cost,
+                ]);
+
+                $totalCost = Decimal::add($totalCost, $cost, 4);
+                $remaining = Decimal::subtract($remaining, $take);
+            }
+
+            if (Decimal::isPositive($remaining)) {
+                throw new DomainException('Return cost restoration exceeds the sale item cost history.');
             }
 
             return Decimal::round($totalCost, 2);

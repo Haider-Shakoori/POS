@@ -81,4 +81,9 @@ class SaleItem extends Model
     {
         return $this->hasMany(InventoryCostLayerConsumption::class);
     }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(SaleReturnItem::class);
+    }
 }
