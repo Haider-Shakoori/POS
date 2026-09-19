@@ -211,6 +211,6 @@ class CustomerCollectionService
             );
 
             return $collection->fresh(['customer', 'paymentMethod', 'allocations.sale']);
-        });
+        }, 3);
     }
 }
