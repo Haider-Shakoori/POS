@@ -5,6 +5,7 @@ namespace App\Services\Sales;
 use App\Enums\SalePaymentStatus;
 use App\Enums\SaleStatus;
 use App\Models\CashierShift;
+use App\Models\Customer;
 use App\Models\ProductUnit;
 use App\Models\Sale;
 use App\Models\SaleItem;
