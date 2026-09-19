@@ -36,6 +36,11 @@
                         <span class="text-lg">▦</span><span>{{ __('ui.point_of_sale') }}</span>
                     </a>
                 @endif
+                @if(auth()->user()->hasPermission('cash.view'))
+                    <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">¤</span><span>{{ __('ui.cash_drawer') }}</span>
+                    </a>
+                @endif
                 @if(auth()->user()->hasPermission('sales.view'))
                     <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'nav-link-active' : '' }}">
                         <span class="text-lg">≡</span><span>{{ __('ui.sales') }}</span>
