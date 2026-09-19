@@ -10,7 +10,7 @@
 8. ✅ Expenses, Cash Drawer & Cash Movements
 9. ✅ Shift Opening, Daily Closing & Reconciliation
 10. ✅ Stock Counts, Damage, Expiry & Reordering
-11. Reporting, Profit & Analytics
+11. ✅ Reporting, Profit & Analytics
 12. Printing, Barcodes, Import/Export & Settings
 13. Security, Performance & Concurrency Hardening
 14. Final Golden-Path QA & Production Readiness

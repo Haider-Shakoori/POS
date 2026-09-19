@@ -23,6 +23,7 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\PurchaseReturnController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\SupplierPaymentController;
+use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Sales\HeldSaleController;
 use App\Http\Controllers\Sales\PosController;
 use App\Http\Controllers\Sales\ProductSearchController;
@@ -103,6 +104,11 @@ Route::middleware('auth')->group(function () {
             ->where('date', '\\d{4}-\\d{2}-\\d{2}')
             ->middleware('permission:business_days.reopen')
             ->name('reopen');
+    });
+
+    Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/sales.csv', [ReportController::class, 'salesCsv'])->name('sales-csv');
     });
 
     Route::get('/sales', [SaleController::class, 'index'])
