@@ -280,3 +280,17 @@ Batch 12 establishes thermal receipt printing, CODE128 label printing, safe cata
 - existing product, batch, inventory-cost-layer, customer, supplier, shift and business-day row locks remain authoritative; Batch 13 does not introduce alternate stock, cash, receivable or payable calculations.
 
 Batch 13 hardens the production boundary without changing AFN-only, no-tax, FIFO/FEFO, ledger or closing semantics. Batch 14 proceeds to final golden-path QA and production readiness.
+
+
+## Final golden-path QA and production readiness
+
+- release verification runs the complete PHP suite on both SQLite and MySQL 8.4; production-sensitive locking, transaction and SQL behavior is therefore exercised on the production database engine rather than inferred from SQLite alone.
+- the final deterministic golden path reconciles purchasing, supplier payable, tracked inventory, sale/CASH/credit settlement, customer collection, operating expense, cashier shift close, business-day close and reporting in one shop day.
+- report monetary aggregates are normalized to fixed two-decimal strings after SQL aggregation so the public reporting contract does not vary by database driver.
+- composer.lock and package-lock.json are committed and CI installs from those resolved dependency graphs.
+- the release pipeline verifies MySQL fresh migration/seeding, frontend production build, Laravel config/route/view cache warm-up, Composer audit and npm high-severity audit.
+- the root route uses a controller rather than a Closure so production route caching is part of the verified deployment path.
+- Batch 14 release candidate verification passed 107 tests / 689 assertions on SQLite and 107 tests / 689 assertions on MySQL 8.4.
+- repository/application readiness does not substitute for deployment operations: production still requires HTTPS, production secrets, APP_DEBUG=false, backups, durable infrastructure and a controlled migration/deployment procedure.
+
+Batch 14 completes the planned development roadmap and establishes the tested release baseline for production deployment.
