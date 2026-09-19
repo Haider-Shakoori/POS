@@ -26,6 +26,8 @@ class ShiftOpeningService
         }
 
         return DB::transaction(function () use ($data, $actor): CashierShift {
+            User::query()->lockForUpdate()->findOrFail($actor->id);
+
             if ($existing = CashierShift::query()
                 ->where('open_idempotency_key', $data['idempotency_key'])
                 ->first()) {
