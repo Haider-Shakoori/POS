@@ -348,4 +348,6 @@ return [
     'make_full_credit' => 'فروش کامل نسیه',
     'confirm_checkout' => 'تأیید فروش',
     'collection_recorded' => 'وصولی مشتری با موفقیت ثبت شد.',
+    'customer' => 'مشتری',
+    'customer_created' => 'مشتری با موفقیت ایجاد شد.',
 ];
