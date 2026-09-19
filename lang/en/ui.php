@@ -296,4 +296,6 @@ return [
     'gross_profit' => 'Gross profit',
     'sale_items' => 'Sale items',
     'sale_payment_pending_notice' => 'The sale is finalized and stock/COGS are recorded. Its balance remains due until the payment workflow is connected in Batch 5.',
+    'payment_partial' => 'Partially paid',
+    'payment_paid' => 'Paid',
 ];

@@ -116,7 +116,7 @@
 
                         <div class="mt-3 grid grid-cols-[2.1rem_minmax(0,1fr)_2.1rem_7rem] gap-2">
                             <button type="button" class="btn-secondary px-0" @click="changeQty(index,-1)">−</button>
-                            <input class="field text-center" x-model="item.quantity" @change="normalizeQty(index)" inputmode="decimal">
+                            <input class="field text-center" x-model="item.quantity" @change="normalizeQty(index)" :step="item.decimal_places > 0 ? Math.pow(10,-item.decimal_places) : 1" inputmode="decimal">
                             <button type="button" class="btn-secondary px-0" @click="changeQty(index,1)">+</button>
                             <div class="grid place-items-center rounded-xl bg-slate-50 px-2 text-end text-sm font-bold dark:bg-slate-800/60" x-text="money(lineSubtotal(item))"></div>
                         </div>
@@ -171,7 +171,7 @@ function posWorkspace(config) {
             this.saleKey = crypto.randomUUID();
         },
 
-        async searchProducts() {
+        async searchProducts(autoAdd = false) {
             this.message = '';
             const term = this.query.trim();
 
@@ -191,6 +191,10 @@ function posWorkspace(config) {
 
                 const payload = await response.json();
                 this.results = payload.data || [];
+
+                if (autoAdd && this.results.length === 1) {
+                    this.addProduct(this.results[0]);
+                }
             } catch (error) {
                 this.results = [];
                 this.message = error.message || config.labels.searchFailed;
@@ -205,7 +209,7 @@ function posWorkspace(config) {
                 return;
             }
 
-            this.searchProducts();
+            this.searchProducts(true);
         },
 
         clearSearch() {
@@ -251,7 +255,13 @@ function posWorkspace(config) {
             const item = this.cart[index];
             const qty = Number(item.quantity);
 
-            if (!Number.isFinite(qty) || qty <= 0) item.quantity = '1';
+            if (!Number.isFinite(qty) || qty <= 0) {
+                item.quantity = '1';
+                return;
+            }
+
+            const places = Number(item.decimal_places || 0);
+            item.quantity = String(Number(qty.toFixed(places)));
         },
 
         lineSubtotal(item) {

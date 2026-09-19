@@ -10,7 +10,7 @@
             <div class="flex flex-wrap items-center gap-3">
                 <h2 class="text-2xl font-black">{{ $sale->number }}</h2>
                 <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">{{ __('ui.status_completed') }}</span>
-                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">{{ __('ui.payment_unpaid') }}</span>
+                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">{{ __('ui.payment_'.$sale->payment_status->value) }}</span>
             </div>
             <div class="mt-2 text-sm text-slate-500">{{ $sale->sold_at->format('Y-m-d H:i') }} · {{ $sale->cashier->name }} · {{ $sale->customer_name_snapshot }}</div>
         </div>
