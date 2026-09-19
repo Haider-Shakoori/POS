@@ -3,6 +3,7 @@
 namespace App\Services\Sales;
 
 use App\Enums\SalePaymentStatus;
+use App\Models\CashierShift;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Sale;
@@ -135,7 +136,7 @@ class PaymentSettlementService
                         reason: 'Cash sale payment',
                         occurredAt: $salePayment->paid_at,
                         shift: $lockedSale->cashier_shift_id
-                            ? AppModelsCashierShift::query()->find($lockedSale->cashier_shift_id)
+                            ? CashierShift::query()->find($lockedSale->cashier_shift_id)
                             : null,
                     );
                 }
