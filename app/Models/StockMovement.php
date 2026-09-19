@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Enums\StockMovementType;
-use LogicException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class StockMovement extends Model
 {
@@ -22,7 +22,8 @@ class StockMovement extends Model
         'quantity_base',
         'balance_after',
         'batch_balance_after',
-        'unit_cost',
+        'source_unit_cost',
+        'unit_cost_base',
         'reference_type',
         'reference_id',
         'idempotency_key',
@@ -40,7 +41,8 @@ class StockMovement extends Model
             'quantity_base' => 'decimal:6',
             'balance_after' => 'decimal:6',
             'batch_balance_after' => 'decimal:6',
-            'unit_cost' => 'decimal:4',
+            'source_unit_cost' => 'decimal:4',
+            'unit_cost_base' => 'decimal:4',
             'occurred_at' => 'datetime',
             'created_at' => 'datetime',
         ];

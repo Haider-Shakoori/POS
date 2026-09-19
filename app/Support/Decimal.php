@@ -43,12 +43,36 @@ final class Decimal
         }
     }
 
+    public static function divide(
+        int|string $dividend,
+        int|string $divisor,
+        int $scale = self::QUANTITY_SCALE,
+    ): string {
+        try {
+            return (string) BigDecimal::of((string) $dividend)
+                ->dividedBy((string) $divisor, $scale, RoundingMode::HalfUp);
+        } catch (MathException $exception) {
+            throw new InvalidArgumentException('Invalid decimal division.', 0, $exception);
+        }
+    }
+
     public static function compare(int|string $left, int|string $right): int
     {
         try {
             return BigDecimal::of((string) $left)->compareTo((string) $right);
         } catch (MathException $exception) {
             throw new InvalidArgumentException('Invalid decimal comparison.', 0, $exception);
+        }
+    }
+
+    public static function fractionalDigits(int|string $value): int
+    {
+        try {
+            return BigDecimal::of((string) $value)
+                ->strippedOfTrailingZeros()
+                ->getScale();
+        } catch (MathException $exception) {
+            throw new InvalidArgumentException('Invalid decimal value.', 0, $exception);
         }
     }
 

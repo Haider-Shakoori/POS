@@ -160,4 +160,5 @@ return [
     'category_created' => 'کټګوري جوړه شوه.',
     'brand_created' => 'برانډ جوړ شو.',
     'unit_created' => 'واحد جوړ شو.',
+    'quantity_precision_invalid' => 'دا واحد تر ډېره :places اعشاري ځایونه مني.',
 ];

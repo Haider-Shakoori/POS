@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Inventory;
 
+use App\Models\Unit;
+use App\Support\Decimal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -48,6 +50,14 @@ class StoreOpeningStockRequest extends FormRequest
 
             if ($product && ! $product->productUnits()->where('unit_id', $this->integer('unit_id'))->exists()) {
                 $validator->errors()->add('unit_id', __('ui.unit_not_configured_for_product'));
+            }
+
+            $unit = Unit::query()->find($this->integer('unit_id'));
+
+            if ($unit && $this->filled('quantity') && Decimal::fractionalDigits($this->input('quantity')) > $unit->decimal_places) {
+                $validator->errors()->add('quantity', __('ui.quantity_precision_invalid', [
+                    'places' => $unit->decimal_places,
+                ]));
             }
         });
     }

@@ -99,6 +99,8 @@ class InventoryCoreTest extends TestCase
         $this->assertSame('24.000000', $movement->conversion_factor);
         $this->assertSame('48.000000', $movement->quantity_base);
         $this->assertSame('48.000000', $movement->balance_after);
+        $this->assertSame('720.0000', $movement->source_unit_cost);
+        $this->assertSame('30.0000', $movement->unit_cost_base);
         $this->assertSame(StockMovementType::OpeningStock, $movement->movement_type);
     }
 
@@ -142,6 +144,34 @@ class InventoryCoreTest extends TestCase
             baseQuantity: '-1',
             actor: $this->owner,
         );
+    }
+
+    public function test_repeated_idempotency_key_does_not_duplicate_stock(): void
+    {
+        $product = $this->makeProduct();
+        $piece = Unit::query()->where('code', 'PCS')->firstOrFail();
+        $key = (string) Str::uuid();
+        $inventory = app(InventoryService::class);
+
+        $first = $inventory->addOpeningStock(
+            product: $product,
+            sourceQuantity: '5',
+            sourceUnitId: $piece->id,
+            actor: $this->owner,
+            idempotencyKey: $key,
+        );
+
+        $second = $inventory->addOpeningStock(
+            product: $product,
+            sourceQuantity: '5',
+            sourceUnitId: $piece->id,
+            actor: $this->owner,
+            idempotencyKey: $key,
+        );
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame('5.000000', $product->fresh()->stock_on_hand);
+        $this->assertSame(1, StockMovement::query()->where('idempotency_key', $key)->count());
     }
 
     public function test_stock_movements_are_immutable(): void

@@ -160,4 +160,5 @@ return [
     'category_created' => 'کتگوری ایجاد شد.',
     'brand_created' => 'برند ایجاد شد.',
     'unit_created' => 'واحد ایجاد شد.',
+    'quantity_precision_invalid' => 'این واحد حداکثر :places رقم اعشاری را می‌پذیرد.',
 ];

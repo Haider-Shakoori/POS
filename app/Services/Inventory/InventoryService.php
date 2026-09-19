@@ -26,7 +26,7 @@ class InventoryService
         string $sourceQuantity,
         int $sourceUnitId,
         ?array $batchData = null,
-        ?string $unitCost = null,
+        ?string $sourceUnitCost = null,
         ?User $actor = null,
         ?string $notes = null,
         ?string $idempotencyKey = null,
@@ -36,20 +36,16 @@ class InventoryService
             $sourceQuantity,
             $sourceUnitId,
             $batchData,
-            $unitCost,
+            $sourceUnitCost,
             $actor,
             $notes,
             $idempotencyKey,
         ): StockMovement {
-            if ($idempotencyKey) {
-                $existing = StockMovement::query()->where('idempotency_key', $idempotencyKey)->first();
-
-                if ($existing) {
-                    return $existing;
-                }
-            }
-
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->getKey());
+
+            if ($existing = $this->existingIdempotentMovement($lockedProduct, $idempotencyKey)) {
+                return $existing;
+            }
 
             if (! $lockedProduct->track_stock) {
                 throw new DomainException('Opening stock cannot be recorded for a product that does not track stock.');
@@ -71,6 +67,14 @@ class InventoryService
                 $sourceUnit->conversion_factor,
             );
 
+            $normalizedSourceCost = $sourceUnitCost !== null
+                ? Decimal::normalize($sourceUnitCost, 4)
+                : null;
+
+            $baseUnitCost = $normalizedSourceCost !== null
+                ? Decimal::divide($normalizedSourceCost, $sourceUnit->conversion_factor, 4)
+                : null;
+
             $batch = $this->resolveBatch($lockedProduct, $batchData);
 
             return $this->applyLockedMovement(
@@ -80,7 +84,8 @@ class InventoryService
                 batch: $batch,
                 sourceUnit: $sourceUnit,
                 sourceQuantity: $normalizedSourceQuantity,
-                unitCost: $unitCost,
+                sourceUnitCost: $normalizedSourceCost,
+                unitCostBase: $baseUnitCost,
                 actor: $actor,
                 notes: $notes,
                 idempotencyKey: $idempotencyKey ?: (string) Str::uuid(),
@@ -93,7 +98,7 @@ class InventoryService
         StockMovementType $type,
         string $baseQuantity,
         ?ProductBatch $batch = null,
-        ?string $unitCost = null,
+        ?string $unitCostBase = null,
         ?User $actor = null,
         ?string $notes = null,
         ?string $referenceType = null,
@@ -105,22 +110,19 @@ class InventoryService
             $type,
             $baseQuantity,
             $batch,
-            $unitCost,
+            $unitCostBase,
             $actor,
             $notes,
             $referenceType,
             $referenceId,
             $idempotencyKey,
         ): StockMovement {
-            if ($idempotencyKey) {
-                $existing = StockMovement::query()->where('idempotency_key', $idempotencyKey)->first();
+            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->getKey());
 
-                if ($existing) {
-                    return $existing;
-                }
+            if ($existing = $this->existingIdempotentMovement($lockedProduct, $idempotencyKey)) {
+                return $existing;
             }
 
-            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->getKey());
             $lockedBatch = $batch
                 ? ProductBatch::query()->lockForUpdate()->findOrFail($batch->getKey())
                 : null;
@@ -130,7 +132,7 @@ class InventoryService
                 type: $type,
                 baseQuantity: Decimal::normalize($baseQuantity),
                 batch: $lockedBatch,
-                unitCost: $unitCost,
+                unitCostBase: $unitCostBase !== null ? Decimal::normalize($unitCostBase, 4) : null,
                 actor: $actor,
                 notes: $notes,
                 referenceType: $referenceType,
@@ -138,6 +140,21 @@ class InventoryService
                 idempotencyKey: $idempotencyKey ?: (string) Str::uuid(),
             );
         });
+    }
+
+    private function existingIdempotentMovement(Product $product, ?string $idempotencyKey): ?StockMovement
+    {
+        if (! $idempotencyKey) {
+            return null;
+        }
+
+        $existing = StockMovement::query()->where('idempotency_key', $idempotencyKey)->first();
+
+        if ($existing && (int) $existing->product_id !== (int) $product->id) {
+            throw new DomainException('The idempotency key belongs to another product movement.');
+        }
+
+        return $existing;
     }
 
     private function resolveBatch(Product $product, ?array $batchData): ?ProductBatch
@@ -154,20 +171,32 @@ class InventoryService
             return null;
         }
 
-        $batch = ProductBatch::query()->firstOrCreate(
-            [
-                'product_id' => $product->id,
-                'batch_number' => $batchData['batch_number'],
-            ],
-            [
-                'manufactured_at' => $batchData['manufactured_at'] ?? null,
-                'expires_at' => $batchData['expires_at'] ?? null,
-                'notes' => $batchData['notes'] ?? null,
-                'stock_on_hand' => '0',
-            ],
-        );
+        $batch = ProductBatch::query()
+            ->where('product_id', $product->id)
+            ->where('batch_number', $batchData['batch_number'])
+            ->lockForUpdate()
+            ->first();
 
-        return ProductBatch::query()->lockForUpdate()->findOrFail($batch->id);
+        if ($batch) {
+            if ($batch->is_blocked) {
+                throw new DomainException('Stock cannot be added to a blocked batch.');
+            }
+
+            if (! empty($batchData['expires_at']) && $batch->expires_at?->format('Y-m-d') !== $batchData['expires_at']) {
+                throw new DomainException('The expiry date does not match the existing batch.');
+            }
+
+            return $batch;
+        }
+
+        return ProductBatch::create([
+            'product_id' => $product->id,
+            'batch_number' => $batchData['batch_number'],
+            'manufactured_at' => $batchData['manufactured_at'] ?? null,
+            'expires_at' => $batchData['expires_at'] ?? null,
+            'notes' => $batchData['notes'] ?? null,
+            'stock_on_hand' => '0',
+        ]);
     }
 
     private function applyLockedMovement(
@@ -177,7 +206,8 @@ class InventoryService
         ?ProductBatch $batch = null,
         ?ProductUnit $sourceUnit = null,
         ?string $sourceQuantity = null,
-        ?string $unitCost = null,
+        ?string $sourceUnitCost = null,
+        ?string $unitCostBase = null,
         ?User $actor = null,
         ?string $notes = null,
         ?string $referenceType = null,
@@ -232,7 +262,8 @@ class InventoryService
             'quantity_base' => $baseQuantity,
             'balance_after' => $newProductBalance,
             'batch_balance_after' => $newBatchBalance,
-            'unit_cost' => $unitCost !== null ? Decimal::normalize($unitCost, 4) : null,
+            'source_unit_cost' => $sourceUnitCost,
+            'unit_cost_base' => $unitCostBase,
             'reference_type' => $referenceType,
             'reference_id' => $referenceId,
             'idempotency_key' => $idempotencyKey ?: (string) Str::uuid(),
@@ -250,6 +281,7 @@ class InventoryService
                 'quantity_base' => $baseQuantity,
                 'balance_after' => $newProductBalance,
                 'batch_id' => $batch?->id,
+                'unit_cost_base' => $unitCostBase,
             ],
             actor: $actor,
         );

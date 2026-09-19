@@ -160,4 +160,5 @@ return [
     'category_created' => 'Category created.',
     'brand_created' => 'Brand created.',
     'unit_created' => 'Unit created.',
+    'quantity_precision_invalid' => 'This unit allows at most :places decimal places.',
 ];

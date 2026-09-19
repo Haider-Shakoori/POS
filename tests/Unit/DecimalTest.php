@@ -12,7 +12,9 @@ class DecimalTest extends TestCase
     {
         $this->assertSame('0.300000', Decimal::add('0.1', '0.2'));
         $this->assertSame('60.000000', Decimal::multiply('2.5', '24'));
+        $this->assertSame('30.0000', Decimal::divide('720', '24', 4));
         $this->assertSame('1,234.5', Decimal::display('1234.500000'));
+        $this->assertSame(1, Decimal::fractionalDigits('2.500000'));
     }
 
     public function test_quantity_precision_is_enforced(): void

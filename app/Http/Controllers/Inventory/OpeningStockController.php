@@ -25,7 +25,7 @@ class OpeningStockController extends Controller
                 'expires_at' => $request->input('expires_at'),
                 'notes' => $request->input('notes'),
             ] : null,
-            unitCost: $request->filled('unit_cost') ? $request->string('unit_cost')->toString() : null,
+            sourceUnitCost: $request->filled('unit_cost') ? $request->string('unit_cost')->toString() : null,
             actor: $request->user(),
             notes: $request->input('notes'),
             idempotencyKey: $request->input('idempotency_key'),

@@ -124,7 +124,8 @@ return new class extends Migration
             $table->decimal('quantity_base', 20, 6);
             $table->decimal('balance_after', 20, 6);
             $table->decimal('batch_balance_after', 20, 6)->nullable();
-            $table->decimal('unit_cost', 18, 4)->nullable();
+            $table->decimal('source_unit_cost', 18, 4)->nullable();
+            $table->decimal('unit_cost_base', 18, 4)->nullable();
             $table->string('reference_type', 120)->nullable();
             $table->unsignedBigInteger('reference_id')->nullable();
             $table->uuid('idempotency_key')->nullable()->unique();
