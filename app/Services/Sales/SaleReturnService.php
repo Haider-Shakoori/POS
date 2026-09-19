@@ -283,7 +283,7 @@ class SaleReturnService
                 'items.costRestorations.layer',
                 'refunds.paymentMethod',
             ]);
-        });
+        }, 3);
     }
 
     private function assertRetryMatches(SaleReturn $existing, array $data, string $type): void
