@@ -41,6 +41,12 @@ class ShiftClosingService
                 return $existing->load(['shift.terminal', 'closedBy']);
             }
 
+            $candidate = CashierShift::query()->findOrFail($shift->id);
+            $businessDate = $candidate->business_date?->format('Y-m-d')
+                ?? $candidate->opened_at->format('Y-m-d');
+
+            $this->days->lockOpen($businessDate);
+
             $locked = CashierShift::query()->lockForUpdate()->findOrFail($shift->id);
 
             if (
@@ -49,11 +55,6 @@ class ShiftClosingService
             ) {
                 throw new DomainException('The user is not allowed to close another cashier’s shift.');
             }
-
-            $businessDate = $locked->business_date?->format('Y-m-d')
-                ?? $locked->opened_at->format('Y-m-d');
-
-            $this->days->lockOpen($businessDate);
 
             if ($locked->status !== ShiftStatus::Open) {
                 throw new DomainException('Only an open cashier shift can be closed.');
@@ -145,11 +146,13 @@ class ShiftClosingService
         }
 
         return DB::transaction(function () use ($shift, $reason, $actor): CashierShift {
-            $locked = CashierShift::query()->lockForUpdate()->findOrFail($shift->id);
-            $businessDate = $locked->business_date?->format('Y-m-d')
-                ?? $locked->opened_at->format('Y-m-d');
+            $candidate = CashierShift::query()->findOrFail($shift->id);
+            $businessDate = $candidate->business_date?->format('Y-m-d')
+                ?? $candidate->opened_at->format('Y-m-d');
 
             $this->days->lockOpen($businessDate);
+
+            $locked = CashierShift::query()->lockForUpdate()->findOrFail($shift->id);
 
             if ($locked->status === ShiftStatus::Open) {
                 return $locked;
