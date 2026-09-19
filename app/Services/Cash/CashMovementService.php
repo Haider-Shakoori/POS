@@ -65,6 +65,12 @@ class CashMovementService
             }
 
             $lockedShift = $this->resolveOpenShift($actor, $shift);
+            $movementTime = $occurredAt ?? now();
+
+            if ($movementTime->lt($lockedShift->opened_at)) {
+                throw new DomainException('Cash transaction time cannot be before the cashier shift opened.');
+            }
+
             $this->ensureOpeningMovement($lockedShift, $actor);
 
             $movement = CashMovement::create([
@@ -80,7 +86,7 @@ class CashMovementService
                 'source_id' => $sourceId,
                 'reference_number' => $referenceNumber,
                 'reason' => $reason,
-                'occurred_at' => $occurredAt ?? now(),
+                'occurred_at' => $movementTime,
                 'created_at' => now(),
             ]);
 
