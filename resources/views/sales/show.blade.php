@@ -44,7 +44,7 @@
         <div class="grid gap-4 sm:grid-cols-3">
             <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.cogs') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($sale->cogs_total) }}</div></div>
             <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.gross_profit') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($sale->gross_profit) }}</div></div>
-            <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.cogs_reversed') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($sale->returns->sum('cogs_reversed')) }}</div></div>
+            <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.cogs_reversed') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($cogsReversedTotal) }}</div></div>
         </div>
     @endif
 
