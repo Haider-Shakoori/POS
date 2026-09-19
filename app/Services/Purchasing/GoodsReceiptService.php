@@ -15,6 +15,7 @@ use App\Models\PurchasePayment;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Cash\CashMovementService;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryService;
 use App\Services\Suppliers\SupplierLedgerService;
@@ -31,6 +32,7 @@ class GoodsReceiptService
         private readonly ProportionalAllocator $allocator,
         private readonly InventoryService $inventory,
         private readonly SupplierLedgerService $supplierLedger,
+        private readonly CashMovementService $cash,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -265,6 +267,20 @@ class GoodsReceiptService
                     actor: $actor,
                     notes: 'Posted goods receipt '.$receipt->number,
                     occurredAt: $receipt->received_at,
+                );
+            }
+
+            if ($initialPayment && $initialPayment->method === PurchasePaymentMethod::Cash) {
+                $this->cash->recordSource(
+                    actor: $actor,
+                    amount: $initialPayment->amount,
+                    direction: 'outflow',
+                    movementType: 'purchase_payment',
+                    sourceType: 'purchase_payment',
+                    sourceId: $initialPayment->id,
+                    referenceNumber: $receipt->number,
+                    reason: 'Initial cash purchase payment',
+                    occurredAt: $initialPayment->paid_at,
                 );
             }
 
