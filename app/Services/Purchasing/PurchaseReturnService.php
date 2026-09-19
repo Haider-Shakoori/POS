@@ -207,19 +207,31 @@ class PurchaseReturnService
                 throw new DomainException('Purchase return quantity exceeds the selected unit precision.');
             }
 
-            $alreadyReturnedQty = Decimal::normalize(
-                (string) $receiptItem->purchaseReturnItems->sum('quantity')
-            );
+            $alreadyReturnedQty = '0.000000';
+
+            foreach ($receiptItem->purchaseReturnItems as $priorReturnItem) {
+                $alreadyReturnedQty = Decimal::add(
+                    $alreadyReturnedQty,
+                    $priorReturnItem->quantity,
+                );
+            }
+
             $remainingQty = Decimal::subtract($receiptItem->quantity, $alreadyReturnedQty);
 
             if (Decimal::compare($quantity, $remainingQty) > 0) {
                 throw new DomainException('Purchase return quantity exceeds the remaining returnable receipt quantity.');
             }
 
-            $alreadyReturnedAmount = Decimal::normalize(
-                (string) $receiptItem->purchaseReturnItems->sum('return_amount'),
-                2,
-            );
+            $alreadyReturnedAmount = '0.00';
+
+            foreach ($receiptItem->purchaseReturnItems as $priorReturnItem) {
+                $alreadyReturnedAmount = Decimal::add(
+                    $alreadyReturnedAmount,
+                    $priorReturnItem->return_amount,
+                    2,
+                );
+            }
+
             $remainingAmount = Decimal::subtract(
                 $receiptItem->landed_total,
                 $alreadyReturnedAmount,
