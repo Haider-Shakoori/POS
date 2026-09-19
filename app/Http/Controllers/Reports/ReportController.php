@@ -9,7 +9,6 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Services\Reports\ReportingService;
-use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,16 +33,27 @@ class ReportController extends Controller
         ReportingService $reports,
     ): StreamedResponse {
         $rows = $reports->salesCsv($request->validated());
+        $canViewProfit = $request->user()->hasPermission('reports.profit');
 
-        return response()->streamDownload(function () use ($rows): void {
+        return response()->streamDownload(function () use ($rows, $canViewProfit): void {
             $out = fopen('php://output', 'wb');
-            fputcsv($out, [
+
+            $headers = [
                 'Sale Number','Sold At','Customer','Subtotal','Line Discount','Sale Discount',
-                'Net Total','Returned Total','COGS','Gross Profit','Paid','Balance Due',
-            ]);
+                'Net Total','Returned Total',
+            ];
+
+            if ($canViewProfit) {
+                $headers[] = 'COGS';
+                $headers[] = 'Gross Profit';
+            }
+
+            $headers[] = 'Paid';
+            $headers[] = 'Balance Due';
+            fputcsv($out, $headers);
 
             foreach ($rows as $row) {
-                fputcsv($out, [
+                $values = [
                     $row->number,
                     $row->sold_at,
                     $row->customer_name ?: $row->customer_name_snapshot,
@@ -52,11 +62,16 @@ class ReportController extends Controller
                     $row->sale_discount_amount,
                     $row->net_total,
                     $row->returned_total,
-                    $row->cogs_total,
-                    $row->gross_profit,
-                    $row->paid_amount,
-                    $row->balance_due,
-                ]);
+                ];
+
+                if ($canViewProfit) {
+                    $values[] = $row->cogs_total;
+                    $values[] = $row->gross_profit;
+                }
+
+                $values[] = $row->paid_amount;
+                $values[] = $row->balance_due;
+                fputcsv($out, $values);
             }
 
             fclose($out);
