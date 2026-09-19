@@ -228,3 +228,23 @@ Batch 9 establishes shift close, actual cash counting, variance/tolerance handli
 - reorder suggestions never create purchase orders automatically.
 
 Batch 10 establishes physical count control, damaged/expired inventory write-off, cost-layer reconciliation, expiry monitoring and advisory reordering. Batch 11 proceeds to reporting, profit and analytics.
+
+
+## Reporting and analytics
+
+- reporting is read-only and never mutates business data.
+- headline net sales use sale net totals less sale returns posted inside the selected report period.
+- headline net COGS uses persisted historical sale COGS less posted return COGS reversals; current product purchase_cost never rewrites historical profit.
+- gross profit = net sales - net COGS.
+- net profit = gross profit + other operating income - operating expenses.
+- product and category performance are net of returned quantity, returned value and reversed historical COGS.
+- product/category filters aggregate matching sale items rather than whole mixed-product sale headers.
+- customer and supplier report balances read their authoritative signed current balances while period activity respects the selected date range.
+- inventory valuation sums remaining FIFO cost layers at four-decimal precision and rounds only the final AFN total.
+- low/out-of-stock, expiry and damage reporting reads current authoritative inventory and write-off records.
+- daily closing history reads immutable BusinessDayClosure snapshots.
+- CSV sales export uses the same validated filter contract as the reporting dashboard.
+- reports.view gates reporting access; reports.profit gates profit-sensitive output.
+- report queries aggregate in SQL and cap detail lists instead of loading transactional tables wholesale.
+
+Batch 11 establishes operational reporting, historical profit analytics, inventory valuation and exportable filtered sales reporting. Batch 12 proceeds to printing, barcodes, import/export and settings.
