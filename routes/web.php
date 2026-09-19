@@ -11,6 +11,7 @@ use App\Http\Controllers\Cash\ShiftOpeningController;
 use App\Http\Controllers\Closing\BusinessDayClosingController;
 use App\Http\Controllers\Closing\ShiftClosingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\InventoryOperationsController;
@@ -35,9 +36,7 @@ use App\Http\Controllers\Sales\SaleReturnController;
 use App\Http\Controllers\Settings\ShopSettingsController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => auth()->check()
-    ? redirect()->route('dashboard')
-    : redirect()->route('login'));
+Route::get('/', HomeController::class)->name('home');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
