@@ -396,4 +396,6 @@ return [
     'no_held_sales' => 'No active held sales.',
     'resume' => 'Resume',
     'release' => 'Release',
+    'ledger_sale_return' => 'Sale return',
+    'ledger_sale_void' => 'Sale void',
 ];
