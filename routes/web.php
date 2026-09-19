@@ -38,7 +38,7 @@ Route::middleware('auth')->group(function () {
             ->name('sales.store');
     });
 
-    Route::get('/sales/{sale}', [SaleController::class, 'show')
+    Route::get('/sales/{sale}', [SaleController::class, 'show'])
         ->middleware('permission:sales.view')
         ->name('sales.show');
 

@@ -32,6 +32,10 @@ This repository is a single-shop supermarket POS for Afghanistan. The core domai
 15. Posted goods receipts are the procurement boundary that changes stock.
 16. Receipt discount and purchase expenses are allocated server-side to preserve landed cost by item and base unit.
 17. Initial purchase-payment records are evidence only until the supplier ledger and cash-drawer batches connect them to financial ledgers.
+18. Completed sales recalculate all quantities, prices and discounts on the server; browser totals are display-only.
+19. Expiry-tracked physical inventory is depleted FEFO from non-expired, non-blocked batches.
+20. Financial COGS is consumed FIFO from immutable inbound inventory cost layers, independently of FEFO physical picking.
+21. Completed sales carry an outstanding balance until Batch 5 records payment or customer credit settlement.
 
 ## Layers
 
@@ -75,3 +79,17 @@ Batch 1 established authentication, RBAC, localization, AFN conventions, shop se
 Batch 2 established categories, brands, units, products, multiple barcodes, unit conversions, batch/expiry foundations, exact quantity math, opening stock, and the append-only stock movement ledger.
 
 Batch 3 establishes suppliers, purchase orders, partial/full goods receiving, receipt expenses, deterministic landed-cost allocation, batch/expiry intake, initial purchase-payment evidence, and stock posting through the shared inventory ledger.
+
+
+## Sales and costing model
+
+- sales are immutable completed commercial documents with AFN subtotal, discounts, net total, historical COGS, gross profit and outstanding balance.
+- sale_items snapshot product/unit identity, quantity, authoritative sale price, discounts and historical item COGS.
+- inventory_cost_layers are created from opening-stock and purchase stock movements and retain remaining FIFO quantities.
+- the Batch 4 migration backfills all pre-existing opening/purchase stock movements into cost layers.
+- inventory_cost_layer_consumptions permanently records which FIFO layers funded each sale item's COGS.
+- sale_item_stock_allocations records physical stock movements and FEFO batches independently of financial FIFO cost layers.
+- untracked stock or inventory without a cost-bearing inbound layer falls back to the current purchase cost at sale time and snapshots that fallback permanently.
+- no payment cash movement is fabricated in Batch 4; completed sales begin with paid_amount 0 and balance_due equal to net_total.
+
+Batch 4 establishes barcode/SKU/multilingual product lookup, the live unit-aware cart, server-authoritative checkout, sale immutability, transactional stock deduction, FIFO historical COGS and FEFO expiry depletion.
