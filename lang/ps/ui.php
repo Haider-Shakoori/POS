@@ -348,4 +348,6 @@ return [
     'make_full_credit' => 'ټول خرڅلاو پور کول',
     'confirm_checkout' => 'خرڅلاو تاییدول',
     'collection_recorded' => 'د مشتری وصولي په بریالیتوب ثبت شوه.',
+    'customer' => 'مشتری',
+    'customer_created' => 'مشتری په بریالیتوب جوړ شو.',
 ];
