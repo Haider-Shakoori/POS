@@ -114,6 +114,10 @@ return new class extends Migration
 
             $table->index(['customer_id', 'occurred_at'], 'customer_ledger_time_idx');
             $table->index(['reference_type', 'reference_id'], 'customer_ledger_reference_idx');
+            $table->unique(
+                ['customer_id', 'entry_type', 'reference_type', 'reference_id'],
+                'customer_ledger_unique_ref'
+            );
         });
     }
 

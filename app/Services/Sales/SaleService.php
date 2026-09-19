@@ -52,6 +52,19 @@ class SaleService
                 ]);
             }
 
+            $customer = null;
+
+            if (! empty($data['customer_id'])) {
+                $customer = Customer::query()
+                    ->whereKey($data['customer_id'])
+                    ->where('is_active', true)
+                    ->first();
+
+                if (! $customer) {
+                    throw new DomainException('The selected customer is unavailable.');
+                }
+            }
+
             $preparedItems = $this->prepareItems($data['items'], $actor);
             $subtotal = '0.00';
             $lineDiscountTotal = '0.00';
@@ -119,9 +132,10 @@ class SaleService
                 'cashier_user_id' => $actor->id,
                 'terminal_id' => $openShift?->terminal_id,
                 'cashier_shift_id' => $openShift?->id,
+                'customer_id' => $customer?->id,
                 'status' => SaleStatus::Completed,
                 'payment_status' => SalePaymentStatus::Unpaid,
-                'customer_name_snapshot' => 'Walk-in Customer',
+                'customer_name_snapshot' => $customer?->name ?? 'Walk-in Customer',
                 'subtotal' => $subtotal,
                 'line_discount_total' => $lineDiscountTotal,
                 'sale_discount_amount' => $saleDiscount,

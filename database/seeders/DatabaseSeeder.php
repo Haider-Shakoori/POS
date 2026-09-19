@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             AccessControlSeeder::class,
             FoundationSeeder::class,
             InventoryReferenceSeeder::class,
+            PaymentMethodSeeder::class,
         ]);
     }
 }
