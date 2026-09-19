@@ -187,3 +187,22 @@ Batch 7 establishes supplier payable reconciliation, later supplier payments, si
 - runtime cash evidence may not be posted before the active shift's opened_at timestamp.
 
 Batch 8 establishes the authoritative expected-cash ledger and operating expense/income workflow. Batch 9 adds shift closing, actual cash, variance tolerance, business-day locking and consolidated daily reconciliation.
+
+
+## Shift and business-day closing
+
+- cashier_shift_closures stores immutable, versioned shift-close snapshots. Reopening a shift never edits a prior closure; the next close increments version.
+- shift expected_cash is recomputed from cash_movements under row lock at close. No alternate drawer formula exists.
+- variance is actual_cash - expected_cash and its sign is preserved; a reason is mandatory when the absolute variance exceeds shop_settings.cash_variance_tolerance.
+- a closed shift rejects new cash movements because CashMovementService requires ShiftStatus::Open.
+- every shift is assigned a calendar business_date at opening; BusinessDayService serializes open/closed state for that date.
+- business_day_closures stores immutable daily snapshots with revision numbers. Reopen + re-close creates the next version and keeps prior snapshots intact.
+- business-day close requires every shift for that date to be closed with actual cash and variance recorded.
+- daily close reconciles the sum of shift expected cash to the authoritative cash-movement ledger before persisting a closure.
+- daily close also validates variance_total = actual_cash_total - expected_cash_total.
+- the consolidated snapshot records sales, discounts, returns, COGS reversal, net COGS, gross/net profit, customer collections, purchases, purchase returns, supplier payments, expenses, other income, cash inflows/outflows, expected cash, actual cash and variance.
+- closing a business day blocks new sales, customer collections, supplier payments, operating entries, goods receipts, purchase returns, sale reversals, opening stock and customer/supplier opening-balance postings dated to that day.
+- reopening a business day is explicit, permission-controlled, reason-required and audited; shift reopen is separately permission-controlled and can occur only while the business day is open.
+- prior closure records are append-only evidence and remain unchanged through reopen/re-close cycles.
+
+Batch 9 establishes shift close, actual cash counting, variance/tolerance handling, daily consolidated close, reopening and closed-day posting locks. Batch 10 proceeds to stock counts, damage, expiry and reordering.
