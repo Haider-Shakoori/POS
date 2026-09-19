@@ -130,7 +130,7 @@ class ShiftClosingService
             );
 
             return $closure->fresh(['shift.terminal', 'closedBy']);
-        });
+        }, 3);
     }
 
     public function reopen(CashierShift $shift, string $reason, User $actor): CashierShift
@@ -207,7 +207,7 @@ class ShiftClosingService
             );
 
             return $locked->fresh(['terminal', 'user']);
-        });
+        }, 3);
     }
 
     private function assertRetryMatches(CashierShiftClosure $existing, array $data): void

@@ -12,7 +12,7 @@
 10. ✅ Stock Counts, Damage, Expiry & Reordering
 11. ✅ Reporting, Profit & Analytics
 12. ✅ Printing, Barcodes, Import/Export & Settings
-13. Security, Performance & Concurrency Hardening
+13. ✅ Security, Performance & Concurrency Hardening
 14. Final Golden-Path QA & Production Readiness
 
 Each batch is implemented on an isolated branch, lightly verified during development, and subjected to broader end-to-end reconciliation in final QA.

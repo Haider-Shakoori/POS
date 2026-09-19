@@ -150,6 +150,6 @@ class BusinessDayClosingService
             );
 
             return $closure->fresh(['businessDay', 'closedBy']);
-        });
+        }, 3);
     }
 }

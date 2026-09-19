@@ -8,6 +8,18 @@ class DocumentNumberService
 {
     public function next(string $type, string $prefix): string
     {
+        if (DB::transactionLevel() > 0) {
+            return $this->nextLocked($type, $prefix);
+        }
+
+        return DB::transaction(
+            fn (): string => $this->nextLocked($type, $prefix),
+            3,
+        );
+    }
+
+    private function nextLocked(string $type, string $prefix): string
+    {
         $date = now()->format('Ymd');
         $key = $type.':'.$date;
 

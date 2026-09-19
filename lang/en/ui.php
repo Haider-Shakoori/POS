@@ -665,4 +665,5 @@ return [
     'allow_negative_stock' => 'Allow negative stock',
     'save_settings' => 'Save settings',
     'settings_saved' => 'Shop settings saved successfully.',
+    'login_throttled' => 'Too many login attempts. Try again in :seconds seconds.',
 ];

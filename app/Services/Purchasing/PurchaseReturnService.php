@@ -174,7 +174,7 @@ class PurchaseReturnService
                 'items.stockMovement',
                 'items.costLayer',
             ]);
-        });
+        }, 3);
     }
 
     private function prepareItems(GoodsReceipt $receipt, array $items): Collection

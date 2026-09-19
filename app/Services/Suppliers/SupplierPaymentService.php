@@ -167,7 +167,7 @@ class SupplierPaymentService
             );
 
             return $payment->fresh(['supplier', 'allocations.goodsReceipt']);
-        });
+        }, 3);
     }
 
     private function assertRetryMatches(SupplierPayment $existing, array $data): void

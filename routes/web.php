@@ -53,7 +53,9 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('pos')->name('pos.')->middleware('permission:pos.access')->group(function () {
         Route::get('/', PosController::class)->name('index');
-        Route::get('/products/search', ProductSearchController::class)->name('products.search');
+        Route::get('/products/search', ProductSearchController::class)
+            ->middleware('throttle:240,1')
+            ->name('products.search');
         Route::post('/sales', [SaleController::class, 'store'])
             ->middleware('permission:sales.create')
             ->name('sales.store');
@@ -112,7 +114,9 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
-        Route::get('/sales.csv', [ReportController::class, 'salesCsv'])->name('sales-csv');
+        Route::get('/sales.csv', [ReportController::class, 'salesCsv'])
+            ->middleware('throttle:30,1')
+            ->name('sales-csv');
     });
 
     Route::get('/sales', [SaleController::class, 'index'])
@@ -176,7 +180,7 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:inventory.products.manage')
             ->name('products.import-template');
         Route::post('/products/import', [ProductDataController::class, 'import'])
-            ->middleware('permission:inventory.products.manage')
+            ->middleware(['permission:inventory.products.manage', 'throttle:5,1'])
             ->name('products.import');
         Route::get('/products-export.csv', [ProductDataController::class, 'export'])
             ->middleware('permission:inventory.view')

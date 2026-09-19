@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\ShopSetting;
+use App\Support\ShopSettingsStore;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -11,7 +11,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->scoped(ShopSettingsStore::class, fn () => new ShopSettingsStore());
     }
 
     public function boot(): void
@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('layouts.app', function ($view): void {
-            $view->with('shop', ShopSetting::query()->first());
+            $view->with('shop', app(ShopSettingsStore::class)->get());
         });
     }
 }

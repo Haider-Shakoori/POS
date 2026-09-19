@@ -333,7 +333,7 @@ class GoodsReceiptService
                 'expenses',
                 'payments',
             ]);
-        });
+        }, 3);
     }
 
     private function prepareItems(array $items, ?PurchaseOrder $order): array
