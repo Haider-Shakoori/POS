@@ -14,6 +14,7 @@ class Supplier extends Model
         'alternate_phone',
         'address',
         'opening_balance',
+        'current_balance',
         'notes',
         'is_active',
     ];
@@ -22,6 +23,7 @@ class Supplier extends Model
     {
         return [
             'opening_balance' => 'decimal:2',
+            'current_balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -39,5 +41,20 @@ class Supplier extends Model
     public function purchasePayments(): HasMany
     {
         return $this->hasMany(PurchasePayment::class);
+    }
+
+    public function supplierPayments(): HasMany
+    {
+        return $this->hasMany(SupplierPayment::class);
+    }
+
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(SupplierLedgerEntry::class);
+    }
+
+    public function purchaseReturns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class);
     }
 }
