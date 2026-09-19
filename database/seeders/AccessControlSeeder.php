@@ -16,6 +16,7 @@ class AccessControlSeeder extends Seeder
             'sales.create' => 'Create sales',
             'sales.return' => 'Return sales',
             'sales.void' => 'Void sales',
+            'sales.hold' => 'Hold and resume POS sales',
             'sales.discount' => 'Apply sales discounts',
             'sales.override_min_price' => 'Sell below configured minimum price',
             'sales.credit' => 'Create customer credit sales',
@@ -75,7 +76,7 @@ class AccessControlSeeder extends Seeder
 
         $assignments = [
             'manager' => [
-                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void',
+                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void', 'sales.hold',
                 'sales.discount', 'sales.override_min_price', 'sales.credit', 'sales.override_credit_limit',
                 'purchases.view', 'purchases.create', 'purchases.approve', 'purchases.receive',
                 'purchases.direct_receive', 'purchases.record_payment',
@@ -87,7 +88,7 @@ class AccessControlSeeder extends Seeder
                 'shifts.open', 'shifts.close',
             ],
             'cashier' => [
-                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.credit',
+                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.hold', 'sales.credit',
                 'customers.view', 'customers.quick_create', 'customers.collect', 'shifts.open', 'shifts.close',
             ],
             'stock_keeper' => [
