@@ -426,4 +426,7 @@ return [
     'post_purchase_return' => 'د پېر بېرته ستنول ثبتول',
     'supplier_payment_recorded' => 'د عرضه کوونکي تادیه :number په بریالیتوب ثبت شوه.',
     'purchase_return_posted' => 'د پېر بېرته ستنول :number په بریالیتوب ثبت شو.',
+    'transaction' => 'راکړه ورکړه',
+    'reference' => 'مرجع',
+    'amount' => 'مبلغ',
 ];
