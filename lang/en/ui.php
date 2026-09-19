@@ -268,4 +268,6 @@ return [
     'po_item_required' => 'A purchase-order item is required for this receipt line.',
     'product_unit_required' => 'A product unit is required for a direct receipt line.',
     'expiry_before_manufacture' => 'Expiry date cannot be before manufacture date.',
+    'purchase_payment_not_allowed' => 'You do not have permission to record a purchase payment.',
+    'direct_unit_cost_required' => 'Direct receipt lines require an explicit unit cost.',
 ];

@@ -320,6 +320,56 @@ class PurchasingCoreTest extends TestCase
         }
     }
 
+    public function test_stock_keeper_cannot_record_initial_purchase_payment(): void
+    {
+        [$product, $cartonUnit] = $this->makeProduct('PERMISSION');
+        $stockKeeper = User::factory()->create();
+        $stockKeeper->roles()->attach(Role::query()->where('name', 'stock_keeper')->firstOrFail());
+
+        $this->expectException(DomainException::class);
+
+        try {
+            app(GoodsReceiptService::class)->post([
+                'idempotency_key' => (string) Str::uuid(),
+                'supplier_id' => $this->supplier->id,
+                'received_at' => '2026-09-19 18:30:00',
+                'paid_amount' => '10.00',
+                'payment_method' => 'cash',
+                'items' => [[
+                    'product_unit_id' => $cartonUnit->id,
+                    'quantity' => '1',
+                    'unit_cost' => '720.0000',
+                ]],
+            ], $stockKeeper);
+        } finally {
+            $this->assertSame('0.000000', $product->fresh()->stock_on_hand);
+            $this->assertSame(0, GoodsReceipt::query()->count());
+        }
+    }
+
+    public function test_direct_receipt_requires_explicit_unit_cost(): void
+    {
+        [$product, $cartonUnit] = $this->makeProduct('DIRECT-COST');
+
+        $this->expectException(DomainException::class);
+
+        try {
+            app(GoodsReceiptService::class)->post([
+                'idempotency_key' => (string) Str::uuid(),
+                'supplier_id' => $this->supplier->id,
+                'received_at' => '2026-09-19 18:45:00',
+                'paid_amount' => '0.00',
+                'items' => [[
+                    'product_unit_id' => $cartonUnit->id,
+                    'quantity' => '1',
+                ]],
+            ], $this->owner);
+        } finally {
+            $this->assertSame('0.000000', $product->fresh()->stock_on_hand);
+            $this->assertSame(0, GoodsReceipt::query()->count());
+        }
+    }
+
     public function test_posted_goods_receipt_header_is_immutable(): void
     {
         [$product, $cartonUnit] = $this->makeProduct();

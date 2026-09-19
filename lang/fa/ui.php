@@ -268,4 +268,6 @@ return [
     'po_item_required' => 'برای این ردیف، قلم سفارش خرید ضروری است.',
     'product_unit_required' => 'برای دریافت مستقیم، واحد محصول ضروری است.',
     'expiry_before_manufacture' => 'تاریخ انقضا نمی‌تواند قبل از تاریخ تولید باشد.',
+    'purchase_payment_not_allowed' => 'شما صلاحیت ثبت پرداخت خرید را ندارید.',
+    'direct_unit_cost_required' => 'برای دریافت مستقیم، قیمت واحد باید مشخص شود.',
 ];

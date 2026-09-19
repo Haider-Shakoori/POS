@@ -268,4 +268,6 @@ return [
     'po_item_required' => 'د دې کرښې لپاره د پېر فرمایش توکی ضروري دی.',
     'product_unit_required' => 'د مستقیم رسید لپاره د محصول واحد ضروري دی.',
     'expiry_before_manufacture' => 'د ختمېدو نېټه د تولید له نېټې مخکې نه شي کېدای.',
+    'purchase_payment_not_allowed' => 'تاسو د پېر تادیې د ثبت اجازه نه لرئ.',
+    'direct_unit_cost_required' => 'د مستقیم رسید لپاره د واحد بیه باید څرګنده شي.',
 ];
