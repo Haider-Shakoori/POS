@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchasing;
 
+use App\Enums\PurchasePaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Purchasing\StoreSupplierRequest;
 use App\Models\Supplier;
@@ -79,8 +80,23 @@ class SupplierController extends Controller
         $supplier->load([
             'purchaseOrders' => fn ($query) => $query->latest('order_date')->limit(10),
             'goodsReceipts' => fn ($query) => $query->latest('received_at')->limit(10),
+            'supplierPayments' => fn ($query) => $query
+                ->with('allocations.goodsReceipt')
+                ->latest('paid_at')
+                ->limit(20),
+            'ledgerEntries' => fn ($query) => $query
+                ->latest('occurred_at')
+                ->latest('id')
+                ->limit(50),
+            'purchaseReturns' => fn ($query) => $query
+                ->with('goodsReceipt')
+                ->latest('posted_at')
+                ->limit(20),
         ]);
 
-        return view('purchasing.suppliers.show', compact('supplier'));
+        return view('purchasing.suppliers.show', [
+            'supplier' => $supplier,
+            'paymentMethods' => PurchasePaymentMethod::cases(),
+        ]);
     }
 }
