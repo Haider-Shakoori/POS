@@ -165,6 +165,40 @@ class InventoryCostService
                     }
 
                     $layer->forceFill(['remaining_quantity_base' => $newRemaining])->save();
+                } elseif ($saleItem->product->track_stock) {
+                    $priorSyntheticLayerId = InventoryCostLayerRestoration::query()
+                        ->where('original_consumption_id', $consumption->id)
+                        ->whereNotNull('inventory_cost_layer_id')
+                        ->value('inventory_cost_layer_id');
+
+                    if ($priorSyntheticLayerId) {
+                        $layer = InventoryCostLayer::query()->lockForUpdate()->findOrFail($priorSyntheticLayerId);
+                        $layer->forceFill([
+                            'initial_quantity_base' => Decimal::add($layer->initial_quantity_base, $take),
+                            'remaining_quantity_base' => Decimal::add($layer->remaining_quantity_base, $take),
+                        ])->save();
+                        $layerId = $layer->id;
+                    } else {
+                        $stockRestoration = $returnItem->stockRestorations()
+                            ->with('stockMovement')
+                            ->orderBy('id')
+                            ->first();
+
+                        if (! $stockRestoration?->stockMovement) {
+                            throw new DomainException('Fallback cost restoration requires a return stock movement.');
+                        }
+
+                        $layer = InventoryCostLayer::create([
+                            'product_id' => $saleItem->product_id,
+                            'product_batch_id' => $stockRestoration->product_batch_id,
+                            'source_stock_movement_id' => $stockRestoration->stock_movement_id,
+                            'initial_quantity_base' => $take,
+                            'remaining_quantity_base' => $take,
+                            'unit_cost_base' => $consumption->unit_cost_base,
+                            'received_at' => $stockRestoration->stockMovement->occurred_at,
+                        ]);
+                        $layerId = $layer->id;
+                    }
                 }
 
                 InventoryCostLayerRestoration::create([
