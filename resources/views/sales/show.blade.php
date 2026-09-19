@@ -21,6 +21,7 @@
             </div>
         </div>
         <div class="flex flex-wrap gap-2">
+            <a href="{{ route('sales.receipt', $sale) }}" target="_blank" class="btn-secondary">{{ __('ui.print_receipt') }}</a>
             <a href="{{ route('sales.index') }}" class="btn-secondary">{{ __('ui.sales_history') }}</a>
             <a href="{{ route('pos.index') }}" class="btn-primary">{{ __('ui.back_to_pos') }}</a>
         </div>
