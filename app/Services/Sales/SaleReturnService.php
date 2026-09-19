@@ -13,6 +13,7 @@ use App\Models\SaleReturnItem;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cash\CashMovementService;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Customers\CustomerLedgerService;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryCostService;
@@ -30,6 +31,7 @@ class SaleReturnService
         private readonly InventoryCostService $costing,
         private readonly CustomerLedgerService $ledger,
         private readonly CashMovementService $cash,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -72,6 +74,8 @@ class SaleReturnService
                     'refunds.paymentMethod',
                 ]);
             }
+
+            $this->days->lockOpen(now());
 
             $lockedSale = Sale::query()
                 ->with([
