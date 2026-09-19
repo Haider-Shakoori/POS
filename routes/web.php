@@ -11,7 +11,9 @@ use App\Http\Controllers\Inventory\ProductController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
+use App\Http\Controllers\Purchasing\PurchaseReturnController;
 use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Purchasing\SupplierPaymentController;
 use App\Http\Controllers\Sales\HeldSaleController;
 use App\Http\Controllers\Sales\PosController;
 use App\Http\Controllers\Sales\ProductSearchController;
@@ -131,6 +133,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/suppliers/{supplier}', [SupplierController::class, 'show'])
             ->middleware('permission:suppliers.view')
             ->name('suppliers.show');
+        Route::post('/suppliers/{supplier}/payments', [SupplierPaymentController::class, 'store'])
+            ->middleware('permission:suppliers.pay')
+            ->name('suppliers.payments.store');
 
         Route::get('/orders', [PurchaseOrderController::class, 'index'])
             ->middleware('permission:purchases.view')
@@ -166,6 +171,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/receipts/{goodsReceipt}', [GoodsReceiptController::class, 'show'])
             ->middleware('permission:purchases.view')
             ->name('receipts.show');
+        Route::post('/receipts/{goodsReceipt}/returns', [PurchaseReturnController::class, 'store'])
+            ->middleware('permission:purchases.return')
+            ->name('receipts.returns.store');
     });
 
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');

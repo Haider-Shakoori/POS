@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Purchasing;
 
+use App\Enums\PurchasePaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Purchasing\StoreSupplierRequest;
 use App\Models\Supplier;
 use App\Services\Audit\AuditLogger;
+use App\Services\Suppliers\SupplierLedgerService;
+use App\Support\Decimal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -32,13 +35,32 @@ class SupplierController extends Controller
         return view('purchasing.suppliers.index', compact('suppliers'));
     }
 
-    public function store(StoreSupplierRequest $request, AuditLogger $audit): RedirectResponse
-    {
+    public function store(
+        StoreSupplierRequest $request,
+        AuditLogger $audit,
+        SupplierLedgerService $ledger,
+    ): RedirectResponse {
+        $openingBalance = Decimal::normalize($request->input('opening_balance', '0'), 2);
+
         $supplier = Supplier::create([
             ...$request->validated(),
-            'opening_balance' => $request->input('opening_balance', '0'),
+            'opening_balance' => $openingBalance,
+            'current_balance' => '0.00',
             'is_active' => true,
         ]);
+
+        if (Decimal::isPositive($openingBalance)) {
+            $ledger->credit(
+                supplier: $supplier,
+                amount: $openingBalance,
+                entryType: 'opening_balance',
+                referenceType: 'supplier',
+                referenceId: $supplier->id,
+                referenceNumber: null,
+                actor: $request->user(),
+                notes: 'Supplier opening payable balance.',
+            );
+        }
 
         $audit->record(
             'purchasing.supplier.created',
@@ -58,8 +80,23 @@ class SupplierController extends Controller
         $supplier->load([
             'purchaseOrders' => fn ($query) => $query->latest('order_date')->limit(10),
             'goodsReceipts' => fn ($query) => $query->latest('received_at')->limit(10),
+            'supplierPayments' => fn ($query) => $query
+                ->with('allocations.goodsReceipt')
+                ->latest('paid_at')
+                ->limit(20),
+            'ledgerEntries' => fn ($query) => $query
+                ->latest('occurred_at')
+                ->latest('id')
+                ->limit(50),
+            'purchaseReturns' => fn ($query) => $query
+                ->with('goodsReceipt')
+                ->latest('posted_at')
+                ->limit(20),
         ]);
 
-        return view('purchasing.suppliers.show', compact('supplier'));
+        return view('purchasing.suppliers.show', [
+            'supplier' => $supplier,
+            'paymentMethods' => PurchasePaymentMethod::cases(),
+        ]);
     }
 }

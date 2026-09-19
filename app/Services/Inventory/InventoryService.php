@@ -4,6 +4,8 @@ namespace App\Services\Inventory;
 
 use App\Enums\StockMovementType;
 use App\Models\Product;
+use App\Models\PurchaseReturn;
+use App\Models\GoodsReceiptItem;
 use App\Models\ProductBatch;
 use App\Models\ProductUnit;
 use App\Models\SaleReturnStockAllocation;
@@ -268,6 +270,58 @@ class InventoryService
             }
 
             return $allocations;
+        });
+    }
+
+    public function returnPurchaseStock(
+        GoodsReceiptItem $receiptItem,
+        PurchaseReturn $purchaseReturn,
+        string $quantityBase,
+        ?User $actor,
+        ?string $notes = null,
+    ): StockMovement {
+        return DB::transaction(function () use (
+            $receiptItem,
+            $purchaseReturn,
+            $quantityBase,
+            $actor,
+            $notes,
+        ): StockMovement {
+            $receiptItem->loadMissing(['product', 'stockMovement.batch']);
+
+            if (! $receiptItem->stockMovement) {
+                throw new DomainException('Goods receipt item has no posted stock movement.');
+            }
+
+            $quantityBase = Decimal::normalize($quantityBase);
+
+            if (! Decimal::isPositive($quantityBase)) {
+                throw new DomainException('Purchase return stock quantity must be greater than zero.');
+            }
+
+            if (Decimal::compare($quantityBase, $receiptItem->product->stock_on_hand) > 0) {
+                throw new DomainException('Purchase return quantity exceeds the available physical product stock.');
+            }
+
+            if (
+                $receiptItem->stockMovement->batch
+                && Decimal::compare($quantityBase, $receiptItem->stockMovement->batch->stock_on_hand) > 0
+            ) {
+                throw new DomainException('Purchase return quantity exceeds the available original batch stock.');
+            }
+
+            return $this->recordMovement(
+                product: $receiptItem->product,
+                type: StockMovementType::PurchaseReturn,
+                baseQuantity: '-'.$quantityBase,
+                batch: $receiptItem->stockMovement->batch,
+                unitCostBase: $receiptItem->base_unit_landed_cost,
+                actor: $actor,
+                notes: $notes,
+                referenceType: PurchaseReturn::class,
+                referenceId: $purchaseReturn->id,
+                idempotencyKey: 'purchase-return:'.$purchaseReturn->id.':receipt-item:'.$receiptItem->id,
+            );
         });
     }
 

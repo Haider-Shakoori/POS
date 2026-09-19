@@ -6,7 +6,7 @@
 4. ✅ POS Cart & Sales Engine
 5. ✅ Payments, Customer Credit & Receivables
 6. ✅ Sales Returns, Voids & Held Sales
-7. Supplier Payables & Purchase Returns
+7. ✅ Supplier Payables & Purchase Returns
 8. Expenses, Cash Drawer & Cash Movements
 9. Shift Opening, Daily Closing & Reconciliation
 10. Stock Counts, Damage, Expiry & Reordering

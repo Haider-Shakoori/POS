@@ -45,6 +45,11 @@ This repository is a single-shop supermarket POS for Afghanistan. The core domai
 28. Return COGS restores the exact FIFO cost consumptions used by the original sale.
 29. Reversals reduce outstanding customer receivables before creating refund evidence for previously paid value.
 30. Held sales are non-financial cart snapshots and never reserve inventory or create receivables/payments.
+31. Supplier balances are signed: positive means payable to supplier; negative means supplier credit owed to the shop.
+32. Supplier payable history is append-only and goods-receipt commercial totals remain immutable.
+33. Purchase returns may remove only stock still traceable to the original receipt cost layer and physical stock/batch.
+34. Purchase returns reverse the original item landed value and exact source inventory cost layer.
+35. Supplier payments and purchase returns record financial evidence independently of cash-drawer movements until Batch 8.
 
 ## Layers
 
@@ -134,3 +139,22 @@ Batch 5 establishes customer accounts, split payments, cash change, credit sales
 - a void reverses every still-returnable item and can follow an earlier partial return without double-restoring quantity or cost.
 
 Batch 6 establishes held carts, partial/full sales returns, controlled voids, historical stock/COGS restoration, receivable reversal and refund evidence.
+
+
+## Supplier payables and purchase returns
+
+- suppliers.current_balance is the authoritative net supplier position. Positive values are payable; negative values are supplier credit.
+- supplier_ledger_entries is append-only. Opening balances and pre-Batch-7 goods receipts/initial purchase payments are backfilled during the Batch 7 migration.
+- every new posted goods receipt credits the supplier ledger by its authoritative net_total.
+- the existing purchase_payments table remains immutable evidence for payments captured at goods-receipt posting; those payments debit the supplier ledger.
+- supplier_payments records later settlements and supplier_payment_allocations applies them to oldest outstanding goods receipts first. Amounts attributable to opening balance may remain unallocated to a receipt.
+- goods_receipts keep immutable commercial totals. Only paid_amount, balance_due and returned_total are settlement/reversal summaries.
+- purchase_returns and purchase_return_items are immutable reversal documents.
+- a purchase-return quantity is capped by the receipt item's unreturned quantity, the remaining original inventory cost layer, and physical stock/batch availability.
+- a purchase return deducts physical inventory from the original receipt batch when batch-tracked and decrements the exact inventory cost layer created by that receipt.
+- partial return value is derived from the original landed_total; the final remaining return uses the residual amount so all partial returns reconcile exactly to the original item landed value.
+- purchase returns debit the supplier ledger. If value already paid exceeds remaining payable, the signed supplier balance becomes negative supplier credit.
+- goods-receipt balance_due is the document's direct unpaid balance; supplier current_balance is the authoritative net position across all supplier documents and credits.
+- supplier payment and purchase-return cash effects remain evidence-only until Batch 8 creates cash-drawer movements.
+
+Batch 7 establishes supplier payable reconciliation, later supplier payments, signed supplier credit, and traceable purchase returns with exact stock/cost reversal.
