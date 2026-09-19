@@ -16,7 +16,7 @@ class PosController extends Controller
             'canDiscount' => $user->hasPermission('sales.discount'),
             'canOverrideMinimum' => $user->hasPermission('sales.override_min_price'),
             'canCredit' => $user->hasPermission('sales.credit'),
-            'canManageCustomers' => $user->hasPermission('customers.manage'),
+            'canQuickCreateCustomers' => $user->hasPermission('customers.quick_create') || $user->hasPermission('customers.manage'),
             'paymentMethods' => PaymentMethod::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
