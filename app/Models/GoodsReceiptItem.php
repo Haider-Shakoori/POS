@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class GoodsReceiptItem extends Model
 {
@@ -47,6 +48,17 @@ class GoodsReceiptItem extends Model
             'manufactured_at' => 'date',
             'expires_at' => 'date',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (): never {
+            throw new LogicException('Posted goods receipt items are immutable.');
+        });
+
+        static::deleting(function (): never {
+            throw new LogicException('Posted goods receipt items are immutable.');
+        });
     }
 
     public function goodsReceipt(): BelongsTo

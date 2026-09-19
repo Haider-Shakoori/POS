@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PurchasePaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class PurchasePayment extends Model
 {
@@ -26,6 +27,17 @@ class PurchasePayment extends Model
             'method' => PurchasePaymentMethod::class,
             'paid_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (): never {
+            throw new LogicException('Purchase payment records are immutable.');
+        });
+
+        static::deleting(function (): never {
+            throw new LogicException('Purchase payment records are immutable.');
+        });
     }
 
     public function goodsReceipt(): BelongsTo

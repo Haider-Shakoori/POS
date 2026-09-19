@@ -67,9 +67,14 @@ class PostGoodsReceiptRequest extends FormRequest
                 $paid !== null
                 && ! $validator->errors()->has('paid_amount')
                 && Decimal::compare($paid, '0') > 0
-                && ! $this->filled('payment_method')
             ) {
-                $validator->errors()->add('payment_method', __('ui.payment_method_required'));
+                if (! $this->filled('payment_method')) {
+                    $validator->errors()->add('payment_method', __('ui.payment_method_required'));
+                }
+
+                if (! $this->user()?->hasPermission('purchases.record_payment')) {
+                    $validator->errors()->add('paid_amount', __('ui.purchase_payment_not_allowed'));
+                }
             }
 
             $hasOrder = $this->filled('purchase_order_id');
@@ -81,6 +86,10 @@ class PostGoodsReceiptRequest extends FormRequest
 
                 if (! $hasOrder && empty($item['product_unit_id'])) {
                     $validator->errors()->add("items.$index.product_unit_id", __('ui.product_unit_required'));
+                }
+
+                if (! $hasOrder && ! array_key_exists('unit_cost', $item)) {
+                    $validator->errors()->add("items.$index.unit_cost", __('ui.direct_unit_cost_required'));
                 }
 
                 if (

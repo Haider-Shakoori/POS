@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PurchaseExpenseType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class GoodsReceiptExpense extends Model
 {
@@ -21,6 +22,17 @@ class GoodsReceiptExpense extends Model
             'type' => PurchaseExpenseType::class,
             'amount' => 'decimal:2',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (): never {
+            throw new LogicException('Posted goods receipt expenses are immutable.');
+        });
+
+        static::deleting(function (): never {
+            throw new LogicException('Posted goods receipt expenses are immutable.');
+        });
     }
 
     public function goodsReceipt(): BelongsTo
