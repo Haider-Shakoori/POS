@@ -374,8 +374,10 @@ class SaleReturnService
         $prepared = [];
         $total = '0.00';
 
-        foreach ($refunds as $refund) {
-            $amount = Decimal::normalize($refund['amount'], 2);
+        foreach ($refunds as $index => $refund) {
+            $amount = ($refund['amount'] ?? null) === null && count($refunds) === 1
+                ? $refundDue
+                : Decimal::normalize($refund['amount'], 2);
 
             if (! Decimal::isPositive($amount)) {
                 throw new DomainException('Refund amount must be greater than zero.');
