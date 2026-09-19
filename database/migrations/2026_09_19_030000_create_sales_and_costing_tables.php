@@ -107,7 +107,11 @@ return new class extends Migration
 
         Schema::create('inventory_cost_layer_consumptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inventory_cost_layer_id')->nullable()->constrained('inventory_cost_layers')->restrictOnDelete();
+            $table->foreignId('inventory_cost_layer_id')->nullable();
+            $table->foreign(
+                'inventory_cost_layer_id',
+                'cost_consumption_layer_fk'
+            )->references('id')->on('inventory_cost_layers')->restrictOnDelete();
             $table->foreignId('sale_item_id')->constrained()->cascadeOnDelete();
             $table->decimal('quantity_base', 20, 6);
             $table->decimal('unit_cost_base', 18, 4);
