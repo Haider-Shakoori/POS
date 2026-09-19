@@ -42,6 +42,24 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:sales.view')
         ->name('sales.show');
 
+    Route::prefix('customers')->name('customers.')->group(function () {
+        Route::get('/', [CustomerController::class, 'index'])
+            ->middleware('permission:customers.view')
+            ->name('index');
+        Route::get('/search', CustomerSearchController::class)
+            ->middleware('permission:customers.view')
+            ->name('search');
+        Route::post('/', [CustomerController::class, 'store'])
+            ->middleware('permission:customers.manage')
+            ->name('store');
+        Route::get('/{customer}', [CustomerController::class, 'show'])
+            ->middleware('permission:customers.view')
+            ->name('show');
+        Route::post('/{customer}/collections', [CustomerCollectionController::class, 'store'])
+            ->middleware('permission:customers.collect')
+            ->name('collections.store');
+    });
+
     Route::prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/products', [ProductController::class, 'index'])
             ->middleware('permission:inventory.view')

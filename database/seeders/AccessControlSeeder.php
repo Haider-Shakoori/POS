@@ -18,6 +18,8 @@ class AccessControlSeeder extends Seeder
             'sales.void' => 'Void sales',
             'sales.discount' => 'Apply sales discounts',
             'sales.override_min_price' => 'Sell below configured minimum price',
+            'sales.credit' => 'Create customer credit sales',
+            'sales.override_credit_limit' => 'Override customer credit limit',
             'purchases.view' => 'View purchases',
             'purchases.create' => 'Create purchases',
             'purchases.approve' => 'Approve and cancel purchase orders',
@@ -72,8 +74,8 @@ class AccessControlSeeder extends Seeder
 
         $assignments = [
             'manager' => [
-                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void',
-                'sales.discount', 'sales.override_min_price',
+                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.credit', 'sales.void',
+                'sales.discount', 'sales.override_min_price', 'sales.credit', 'sales.override_credit_limit',
                 'purchases.view', 'purchases.create', 'purchases.approve', 'purchases.receive',
                 'purchases.direct_receive', 'purchases.record_payment',
                 'inventory.view', 'inventory.products.manage', 'inventory.catalog.manage', 'inventory.opening_stock',
