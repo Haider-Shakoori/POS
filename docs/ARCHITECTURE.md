@@ -206,3 +206,25 @@ Batch 8 establishes the authoritative expected-cash ledger and operating expense
 - prior closure records are append-only evidence and remain unchanged through reopen/re-close cycles.
 
 Batch 9 establishes shift close, actual cash counting, variance/tolerance handling, daily consolidated close, reopening and closed-day posting locks. Batch 10 proceeds to stock counts, damage, expiry and reordering.
+
+
+## Inventory controls and reordering
+
+- stock_counts and stock_count_items capture immutable expected/physical/variance snapshots before approval.
+- creating a count draft has no stock or cost effect.
+- approval is separately permission-controlled and posts only non-zero variance through InventoryService.
+- approval rejects a count when current product/batch stock differs from the expected snapshot captured at count time; stale counts must be recounted rather than force-applied.
+- positive count variance uses adjustment_in, current product purchase cost, and creates a new inventory cost layer.
+- negative count variance uses adjustment_out and consumes FIFO cost layers; expiry-tracked adjustments consume only the selected batch's cost layers.
+- inventory_writeoffs and inventory_writeoff_items are immutable posted evidence for damage and expiry losses.
+- damage/expiry stock movements reduce physical stock and inventory_cost_adjustment_consumptions records the exact cost-layer depletion.
+- expiry write-offs require an already-expired batch and cannot be posted against non-expiry products.
+- damage and expiry quantities cannot exceed current product/batch physical stock.
+- inventory adjustment cost depletion is idempotent by stock movement. Missing historical layers fall back to the current purchase-cost snapshot rather than leaving physical stock with unaccounted cost.
+- count approvals and write-offs require the current business day to be open; Batch 9 closed-day locking therefore applies to inventory control postings.
+- expiry monitoring separates already-expired positive-stock batches from batches expiring inside the selected window.
+- reorder suggestions are advisory only. A product becomes a suggestion when stock_on_hand <= minimum_stock and a threshold/reorder quantity is configured.
+- suggested reorder quantity is max(configured reorder_quantity, minimum_stock - stock_on_hand), calculated with exact decimal arithmetic.
+- reorder suggestions never create purchase orders automatically.
+
+Batch 10 establishes physical count control, damaged/expired inventory write-off, cost-layer reconciliation, expiry monitoring and advisory reordering. Batch 11 proceeds to reporting, profit and analytics.
