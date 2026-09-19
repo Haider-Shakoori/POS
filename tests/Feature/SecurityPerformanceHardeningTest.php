@@ -97,6 +97,15 @@ class SecurityPerformanceHardeningTest extends TestCase
 
         RateLimiter::clear('login|cashier|127.0.0.1');
 
+        $this->from('/login')
+            ->post('/login', [
+                'username' => 'cashier',
+                'password' => 'wrong-password',
+            ])
+            ->assertRedirect('/login');
+
+        $this->assertSame(1, RateLimiter::attempts('login|cashier|127.0.0.1'));
+
         $this->post('/login', [
             'username' => 'cashier',
             'password' => 'secret-password',
