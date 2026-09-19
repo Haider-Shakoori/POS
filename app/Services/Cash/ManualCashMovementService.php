@@ -6,6 +6,7 @@ use App\Models\CashierShift;
 use App\Models\CashMovement;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Support\Decimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +23,21 @@ class ManualCashMovementService
         return DB::transaction(function () use ($shift, $data, $actor): CashMovement {
             if (! $actor->hasPermission('cash.manage')) {
                 throw new DomainException('The user is not allowed to manage drawer cash.');
+            }
+
+            if ($existing = CashMovement::query()
+                ->where('idempotency_key', $data['idempotency_key'])
+                ->first()) {
+                if (
+                    (int) $existing->cashier_shift_id !== (int) $shift->id
+                    || $existing->movement_type !== $data['movement_type']
+                    || Decimal::compare($existing->amount, Decimal::normalize($data['amount'], 2)) !== 0
+                    || trim((string) $existing->reason) !== trim((string) $data['reason'])
+                ) {
+                    throw new DomainException('The manual cash movement idempotency key is already bound to another payload.');
+                }
+
+                return $existing;
             }
 
             $movement = $this->cash->recordManual(
