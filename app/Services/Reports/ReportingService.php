@@ -232,15 +232,48 @@ class ReportingService
 
     private function salesTrend(CarbonImmutable $from, CarbonImmutable $to): Collection
     {
-        return DB::table('sales')
+        $sales = DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
             ->selectRaw('DATE(sold_at) as day')
             ->selectRaw('COUNT(*) as sales_count')
-            ->selectRaw('COALESCE(SUM(net_total),0) as net_total')
-            ->selectRaw('COALESCE(SUM(gross_profit),0) as gross_profit')
+            ->selectRaw('COALESCE(SUM(net_total),0) as sales_net')
+            ->selectRaw('COALESCE(SUM(cogs_total),0) as sales_cogs')
             ->groupByRaw('DATE(sold_at)')
-            ->orderBy('day')
-            ->get();
+            ->get()
+            ->keyBy('day');
+
+        $returns = DB::table('sale_returns')
+            ->whereBetween('posted_at', [$from->startOfDay(), $to->endOfDay()])
+            ->selectRaw('DATE(posted_at) as day')
+            ->selectRaw('COALESCE(SUM(return_total),0) as returns_total')
+            ->selectRaw('COALESCE(SUM(cogs_reversed),0) as cogs_reversed')
+            ->groupByRaw('DATE(posted_at)')
+            ->get()
+            ->keyBy('day');
+
+        return $sales->keys()->merge($returns->keys())->unique()->sort()->values()
+            ->map(function ($day) use ($sales, $returns): object {
+                $sale = $sales->get($day);
+                $return = $returns->get($day);
+
+                $netSales = Decimal::subtract(
+                    Decimal::normalize((string) ($sale->sales_net ?? 0), 2),
+                    Decimal::normalize((string) ($return->returns_total ?? 0), 2),
+                    2,
+                );
+                $netCogs = Decimal::subtract(
+                    Decimal::normalize((string) ($sale->sales_cogs ?? 0), 2),
+                    Decimal::normalize((string) ($return->cogs_reversed ?? 0), 2),
+                    2,
+                );
+
+                return (object) [
+                    'day' => $day,
+                    'sales_count' => (int) ($sale->sales_count ?? 0),
+                    'net_total' => $netSales,
+                    'gross_profit' => Decimal::subtract($netSales, $netCogs, 2),
+                ];
+            });
     }
 
     private function productPerformance(CarbonImmutable $from, CarbonImmutable $to, array $filters, bool $descending): Collection
