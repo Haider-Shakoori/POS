@@ -6,6 +6,7 @@ use App\Models\ShopSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
@@ -16,7 +17,9 @@ class SetLocale
         $preferred = $request->user()?->preferred_locale;
         $sessionLocale = $request->session()->get('locale');
 
-        $shopLocale = ShopSetting::query()->value('default_locale');
+        $shopLocale = Schema::hasTable('shop_settings')
+            ? ShopSetting::query()->value('default_locale')
+            : null;
         $fallback = in_array($shopLocale, $supported, true) ? $shopLocale : config('app.locale');
 
         $locale = in_array($preferred, $supported, true)
