@@ -91,4 +91,9 @@ class GoodsReceiptItem extends Model
     {
         return $this->hasMany(PurchaseReturnItem::class);
     }
+
+    public function costLayer(): IlluminateDatabaseEloquentRelationsHasOne
+    {
+        return $this->hasOne(InventoryCostLayer::class, 'source_stock_movement_id', 'stock_movement_id');
+    }
 }
