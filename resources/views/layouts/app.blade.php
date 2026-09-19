@@ -41,6 +41,11 @@
                         <span class="text-lg">¤</span><span>{{ __('ui.cash_drawer') }}</span>
                     </a>
                 @endif
+                @if(auth()->user()->hasPermission('business_days.view'))
+                    <a href="{{ route('closing.index') }}" class="nav-link {{ request()->routeIs('closing.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">✓</span><span>{{ __('ui.daily_closing') }}</span>
+                    </a>
+                @endif
                 @if(auth()->user()->hasPermission('sales.view'))
                     <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'nav-link-active' : '' }}">
                         <span class="text-lg">≡</span><span>{{ __('ui.sales') }}</span>
