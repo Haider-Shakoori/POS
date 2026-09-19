@@ -27,6 +27,7 @@ class GoodsReceipt extends Model
         'net_total',
         'paid_amount',
         'balance_due',
+        'returned_total',
         'posted_at',
         'notes',
     ];
@@ -43,14 +44,26 @@ class GoodsReceipt extends Model
             'net_total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'balance_due' => 'decimal:2',
+            'returned_total' => 'decimal:2',
             'posted_at' => 'datetime',
         ];
     }
 
     protected static function booted(): void
     {
-        static::updating(function (): never {
-            throw new LogicException('Posted goods receipts are immutable and cannot be updated.');
+        static::updating(function (GoodsReceipt $receipt): void {
+            $allowed = [
+                'paid_amount',
+                'balance_due',
+                'returned_total',
+                'updated_at',
+            ];
+
+            $forbidden = array_diff(array_keys($receipt->getDirty()), $allowed);
+
+            if ($forbidden !== []) {
+                throw new LogicException('Posted goods receipt commercial fields are immutable.');
+            }
         });
 
         static::deleting(function (): never {
@@ -91,5 +104,15 @@ class GoodsReceipt extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(PurchasePayment::class);
+    }
+
+    public function supplierPaymentAllocations(): HasMany
+    {
+        return $this->hasMany(SupplierPaymentAllocation::class);
+    }
+
+    public function purchaseReturns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class);
     }
 }
