@@ -7,6 +7,7 @@ use App\Models\OperatingEntry;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Documents\DocumentNumberService;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
@@ -18,6 +19,7 @@ class OperatingEntryService
     public function __construct(
         private readonly DocumentNumberService $numbers,
         private readonly CashMovementService $cash,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -70,6 +72,8 @@ class OperatingEntryService
             $occurredAt = ! empty($data['occurred_at'])
                 ? CarbonImmutable::parse($data['occurred_at'])
                 : now();
+
+            $this->days->lockOpen($occurredAt);
 
             $entry = OperatingEntry::create([
                 'number' => $this->numbers->next('operating_entry', $entryType === 'expense' ? 'EXP' : 'INC'),
