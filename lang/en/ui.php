@@ -348,4 +348,6 @@ return [
     'make_full_credit' => 'Make full credit sale',
     'confirm_checkout' => 'Confirm checkout',
     'collection_recorded' => 'Customer collection recorded successfully.',
+    'customer' => 'Customer',
+    'customer_created' => 'Customer created successfully.',
 ];
