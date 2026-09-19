@@ -7,6 +7,7 @@ use App\Http\Requests\Sales\CompleteSaleRequest;
 use App\Models\PaymentMethod;
 use App\Models\Sale;
 use App\Services\Sales\CheckoutService;
+use App\Support\Decimal;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -76,8 +77,15 @@ class SaleController extends Controller
             'items.returnItems',
         ]);
 
+        $cogsReversedTotal = '0.00';
+
+        foreach ($sale->returns as $return) {
+            $cogsReversedTotal = Decimal::add($cogsReversedTotal, $return->cogs_reversed, 2);
+        }
+
         return view('sales.show', [
             'sale' => $sale,
+            'cogsReversedTotal' => $cogsReversedTotal,
             'paymentMethods' => PaymentMethod::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
