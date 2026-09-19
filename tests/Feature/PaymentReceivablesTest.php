@@ -234,6 +234,12 @@ class PaymentReceivablesTest extends TestCase
         $this->receive($piece->id, '10');
         $customer = $this->makeCustomer('Limited Customer', '30.00');
 
+        $cashier = User::factory()->create();
+        $cashier->roles()->attach(Role::query()->where('name', 'cashier')->firstOrFail());
+
+        $this->assertTrue($cashier->hasPermission('sales.credit'));
+        $this->assertFalse($cashier->hasPermission('sales.override_credit_limit'));
+
         try {
             app(CheckoutService::class)->checkout([
                 'idempotency_key' => (string) Str::uuid(),
@@ -249,7 +255,7 @@ class PaymentReceivablesTest extends TestCase
                     'amount' => '20.00',
                     'tendered_amount' => '20.00',
                 ]],
-            ], $this->owner);
+            ], $cashier);
 
             $this->fail('Expected credit limit to reject checkout.');
         } catch (DomainException) {
