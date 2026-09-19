@@ -39,6 +39,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/sales', [SaleController::class, 'store'])
             ->middleware('permission:sales.create')
             ->name('sales.store');
+        Route::post('/customers', [CustomerController::class, 'store'])
+            ->middleware('permission:customers.quick_create')
+            ->name('customers.store');
     });
 
     Route::get('/sales/{sale}', [SaleController::class, 'show'])
