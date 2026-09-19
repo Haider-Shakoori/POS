@@ -15,13 +15,19 @@ class StoreOpeningStockRequest extends FormRequest
 
     public function rules(): array
     {
+        $expiryRules = ['nullable', 'date'];
+
+        if ($this->filled('manufactured_at')) {
+            $expiryRules[] = 'after_or_equal:manufactured_at';
+        }
+
         return [
             'quantity' => ['required', 'decimal:0,6', 'gt:0'],
             'unit_id' => ['required', Rule::exists('units', 'id')->where('is_active', true)],
             'unit_cost' => ['nullable', 'decimal:0,4', 'min:0'],
             'batch_number' => ['nullable', 'string', 'max:100'],
             'manufactured_at' => ['nullable', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:manufactured_at'],
+            'expires_at' => $expiryRules,
             'notes' => ['nullable', 'string', 'max:1000'],
             'idempotency_key' => ['nullable', 'uuid'],
         ];

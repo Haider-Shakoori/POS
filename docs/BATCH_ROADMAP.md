@@ -1,7 +1,7 @@
 # Development Roadmap
 
-1. Foundation & Architecture
-2. Product & Inventory Core
+1. ✅ Foundation & Architecture
+2. ✅ Product & Inventory Core
 3. Purchasing & Goods Receiving
 4. POS Cart & Sales Engine
 5. Payments, Customer Credit & Receivables
