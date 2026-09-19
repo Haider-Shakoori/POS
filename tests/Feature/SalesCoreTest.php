@@ -83,6 +83,8 @@ class SalesCoreTest extends TestCase
         [$product, $piece] = $this->makeProduct(sku: 'SERVER-TOTALS');
         $this->receive($piece->id, '10', '10.0000');
 
+        $cash = PaymentMethod::query()->where('code', 'cash')->firstOrFail();
+
         $response = $this->actingAs($this->owner)->postJson(route('pos.sales.store'), [
             'idempotency_key' => (string) Str::uuid(),
             'subtotal' => '0.01',
@@ -95,6 +97,11 @@ class SalesCoreTest extends TestCase
                 'line_discount_amount' => '0.00',
                 'unit_price' => '1.00',
             ]],
+            'payments' => [[
+                'payment_method_id' => $cash->id,
+                'amount' => '60.00',
+                'tendered_amount' => '60.00',
+            ]],
         ]);
 
         $response->assertCreated()
@@ -106,7 +113,8 @@ class SalesCoreTest extends TestCase
         $this->assertSame('60.00', $sale->net_total);
         $this->assertSame('20.00', $sale->cogs_total);
         $this->assertSame('40.00', $sale->gross_profit);
-        $this->assertSame('60.00', $sale->balance_due);
+        $this->assertSame('60.00', $sale->paid_amount);
+        $this->assertSame('0.00', $sale->balance_due);
         $this->assertSame('8.000000', $product->fresh()->stock_on_hand);
     }
 
