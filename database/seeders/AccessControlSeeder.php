@@ -1,0 +1,96 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Permission;
+use App\Models\Role;
+use Illuminate\Database\Seeder;
+
+class AccessControlSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $permissions = [
+            'pos.access' => 'Access POS',
+            'sales.view' => 'View sales',
+            'sales.create' => 'Create sales',
+            'sales.return' => 'Return sales',
+            'sales.void' => 'Void sales',
+            'sales.discount' => 'Apply sales discounts',
+            'purchases.view' => 'View purchases',
+            'purchases.create' => 'Create purchases',
+            'purchases.approve' => 'Approve purchases',
+            'inventory.view' => 'View inventory',
+            'inventory.adjust' => 'Adjust inventory',
+            'inventory.count' => 'Perform stock counts',
+            'inventory.count.approve' => 'Approve stock counts',
+            'customers.view' => 'View customers',
+            'customers.manage' => 'Manage customers',
+            'customers.collect' => 'Record customer collections',
+            'suppliers.view' => 'View suppliers',
+            'suppliers.manage' => 'Manage suppliers',
+            'suppliers.pay' => 'Record supplier payments',
+            'expenses.view' => 'View expenses',
+            'expenses.create' => 'Create expenses',
+            'reports.view' => 'View reports',
+            'reports.profit' => 'View profit reports',
+            'shifts.open' => 'Open cashier shifts',
+            'shifts.close' => 'Close cashier shifts',
+            'shifts.reopen' => 'Reopen closed shifts',
+            'settings.manage' => 'Manage shop settings',
+            'users.manage' => 'Manage users and access',
+            'audit.view' => 'View audit logs',
+        ];
+
+        foreach ($permissions as $name => $label) {
+            Permission::query()->updateOrCreate(['name' => $name], ['label' => $label]);
+        }
+
+        $roles = [
+            'owner' => 'Owner',
+            'administrator' => 'Administrator',
+            'manager' => 'Manager',
+            'cashier' => 'Cashier',
+            'stock_keeper' => 'Stock Keeper',
+            'accountant' => 'Accountant',
+        ];
+
+        foreach ($roles as $name => $label) {
+            Role::query()->updateOrCreate(['name' => $name], ['label' => $label]);
+        }
+
+        $all = Permission::query()->pluck('id');
+        Role::query()->whereIn('name', ['owner', 'administrator'])->get()
+            ->each(fn (Role $role) => $role->permissions()->sync($all));
+
+        $assignments = [
+            'manager' => [
+                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void', 'sales.discount',
+                'purchases.view', 'purchases.create', 'purchases.approve',
+                'inventory.view', 'inventory.adjust', 'inventory.count', 'inventory.count.approve',
+                'customers.view', 'customers.manage', 'customers.collect',
+                'suppliers.view', 'suppliers.manage', 'suppliers.pay',
+                'expenses.view', 'expenses.create', 'reports.view', 'reports.profit',
+                'shifts.open', 'shifts.close',
+            ],
+            'cashier' => [
+                'pos.access', 'sales.view', 'sales.create', 'sales.return',
+                'customers.view', 'customers.collect', 'shifts.open', 'shifts.close',
+            ],
+            'stock_keeper' => [
+                'purchases.view', 'purchases.create', 'inventory.view',
+                'inventory.adjust', 'inventory.count', 'suppliers.view',
+            ],
+            'accountant' => [
+                'sales.view', 'purchases.view', 'customers.view', 'customers.collect',
+                'suppliers.view', 'suppliers.pay', 'expenses.view', 'expenses.create',
+                'reports.view', 'reports.profit',
+            ],
+        ];
+
+        foreach ($assignments as $roleName => $permissionNames) {
+            $ids = Permission::query()->whereIn('name', $permissionNames)->pluck('id');
+            Role::query()->where('name', $roleName)->firstOrFail()->permissions()->sync($ids);
+        }
+    }
+}

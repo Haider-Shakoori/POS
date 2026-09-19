@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="{{ app()->getLocale() }}" dir="{{ config('pos.locales.'.app()->getLocale().'.direction', 'ltr') }}" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>@yield('title', __('ui.dashboard')) · {{ config('app.name') }}</title>
+    <script>
+        if (localStorage.getItem('pos-theme') === 'dark') document.documentElement.classList.add('dark');
+    </script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="min-h-full bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+<div x-data="{ navOpen: false }" class="min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+    <div x-show="navOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" @click="navOpen = false"></div>
+
+    <aside :class="navOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'" class="fixed inset-y-0 start-0 z-50 w-72 border-e border-slate-200 bg-white transition-transform lg:sticky lg:top-0 lg:z-auto lg:block lg:h-screen lg:w-auto lg:translate-x-0 dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex h-full flex-col p-4">
+            <div class="flex items-center justify-between gap-3 px-2 py-3">
+                <div class="flex min-w-0 items-center gap-3">
+                    <div class="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-600 text-lg font-black text-white">P</div>
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-bold">{{ $shop?->shop_name ?? config('app.name') }}</div>
+                        <div class="text-xs text-slate-500">{{ __('ui.afghanistan_pos') }}</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-secondary px-3 lg:hidden" @click="navOpen = false">×</button>
+            </div>
+
+            <nav class="mt-5 space-y-1">
+                <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'nav-link-active' : '' }}">
+                    <span class="text-lg">⌂</span><span>{{ __('ui.dashboard') }}</span>
+                </a>
+                @if(auth()->user()->hasPermission('pos.access'))
+                    <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">▦</span><span>{{ __('ui.point_of_sale') }}</span>
+                    </a>
+                @endif
+            </nav>
+
+            <div class="mt-6 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{{ __('ui.next_modules') }}</div>
+            <div class="mt-2 space-y-1 opacity-70">
+                <div class="nav-link cursor-default"><span>□</span><span>{{ __('ui.inventory') }}</span></div>
+                <div class="nav-link cursor-default"><span>◇</span><span>{{ __('ui.customers') }}</span></div>
+                <div class="nav-link cursor-default"><span>△</span><span>{{ __('ui.suppliers') }}</span></div>
+                <div class="nav-link cursor-default"><span>◌</span><span>{{ __('ui.reports') }}</span></div>
+            </div>
+
+            <div class="mt-auto panel p-3">
+                <div class="text-sm font-semibold">{{ auth()->user()->name }}</div>
+                <div class="mt-1 text-xs text-slate-500">{{ auth()->user()->username }}</div>
+                <form class="mt-3" method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button class="btn-secondary w-full" type="submit">{{ __('ui.logout') }}</button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <main class="min-w-0">
+        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+            <div class="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+                <div class="flex min-w-0 items-center gap-3">
+                    <button type="button" class="btn-secondary px-3 lg:hidden" @click="navOpen = true" aria-label="{{ __('ui.open_navigation') }}">☰</button>
+                    <div class="min-w-0">
+                        <div class="truncate text-xs font-medium text-slate-500">{{ now()->format('l, d M Y') }}</div>
+                        <h1 class="truncate text-base font-bold">@yield('page-title', __('ui.dashboard'))</h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <form method="POST" action="{{ route('locale.update', app()->getLocale() === 'en' ? 'fa' : (app()->getLocale() === 'fa' ? 'ps' : 'en')) }}">
+                        @csrf
+                        <button class="btn-secondary" type="submit">{{ __('ui.language') }}</button>
+                    </form>
+                    <button class="btn-secondary px-3" type="button" @click="$store.theme.toggle()" aria-label="{{ __('ui.toggle_theme') }}">◐</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-4 sm:p-6 lg:p-8">
+            @yield('content')
+        </div>
+    </main>
+</div>
+</body>
+</html>
