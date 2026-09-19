@@ -74,7 +74,7 @@ class AccessControlSeeder extends Seeder
 
         $assignments = [
             'manager' => [
-                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.credit', 'sales.void',
+                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void',
                 'sales.discount', 'sales.override_min_price', 'sales.credit', 'sales.override_credit_limit',
                 'purchases.view', 'purchases.create', 'purchases.approve', 'purchases.receive',
                 'purchases.direct_receive', 'purchases.record_payment',
@@ -86,7 +86,7 @@ class AccessControlSeeder extends Seeder
                 'shifts.open', 'shifts.close',
             ],
             'cashier' => [
-                'pos.access', 'sales.view', 'sales.create', 'sales.return',
+                'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.credit',
                 'customers.view', 'customers.collect', 'shifts.open', 'shifts.close',
             ],
             'stock_keeper' => [
