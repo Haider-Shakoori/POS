@@ -10,9 +10,11 @@
         saleUrl: @js(route('pos.sales.store')),
         customerSearchUrl: @js(route('customers.search')),
         customerStoreUrl: @js(route('pos.customers.store')),
+        heldBaseUrl: @js(url('/pos/held-sales')),
         csrf: @js(csrf_token()),
         canDiscount: @js($canDiscount),
         canCredit: @js($canCredit),
+        canHold: @js($canHold),
         canQuickCreateCustomers: @js($canQuickCreateCustomers),
         paymentMethods: @js($paymentMethods),
         currency: '؋',
@@ -23,6 +25,9 @@
             customerSearchFailed: @js(__('ui.customer_search_failed')),
             customerCreateFailed: @js(__('ui.customer_create_failed')),
             customerRequired: @js(__('ui.customer_required_for_credit')),
+            holdFailed: @js(__('ui.hold_sale_failed')),
+            heldLoadFailed: @js(__('ui.held_sales_load_failed')),
+            cartMustBeEmpty: @js(__('ui.cart_must_be_empty_to_resume')),
         }
     })"
     x-init="$nextTick(() => $refs.search.focus())"
@@ -150,6 +155,16 @@
             <div class="flex justify-between text-sm"><span>{{ __('ui.subtotal') }}</span><strong x-text="money(subtotal())"></strong></div>
             <div class="flex justify-between text-sm"><span>{{ __('ui.discount') }}</span><strong x-text="money(totalDiscount())"></strong></div>
             <div class="flex justify-between border-t border-slate-200 pt-3 text-xl dark:border-slate-800"><span class="font-black">{{ __('ui.total') }}</span><strong x-text="money(total())"></strong></div>
+
+            <div x-show="canHold" class="grid grid-cols-2 gap-2">
+                <button class="btn-secondary" type="button" @click="holdCurrentSale()" :disabled="!cart.length || holding">
+                    <span x-show="!holding">{{ __('ui.hold_sale') }}</span>
+                    <span x-show="holding">{{ __('ui.holding_sale') }}</span>
+                </button>
+                <button class="btn-secondary" type="button" @click="heldOpen=true; loadHeldSales()">
+                    {{ __('ui.held_sales') }} <span class="ms-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] dark:bg-slate-700" x-text="heldSales.length"></span>
+                </button>
+            </div>
 
             <button class="btn-primary w-full py-3.5" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
                 {{ __('ui.pay_and_complete') }}
@@ -295,6 +310,51 @@
             </aside>
         </div>
     </div>
+
+    <div
+        x-cloak
+        x-show="heldOpen"
+        x-transition.opacity
+        class="fixed inset-0 z-[85] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
+        @keydown.escape.window="heldOpen=false"
+    >
+        <div class="panel mx-auto my-8 max-w-3xl overflow-hidden" @click.outside="heldOpen=false">
+            <div class="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
+                <div>
+                    <h3 class="text-xl font-black">{{ __('ui.held_sales') }}</h3>
+                    <p class="mt-1 text-xs text-slate-500">{{ __('ui.held_sales_help') }}</p>
+                </div>
+                <button class="btn-secondary px-3" type="button" @click="heldOpen=false">×</button>
+            </div>
+
+            <div x-show="heldLoading" class="p-8 text-center text-sm text-slate-400">{{ __('ui.loading_held_sales') }}</div>
+            <div x-show="!heldLoading && !heldSales.length" class="p-8 text-center text-sm text-slate-400">{{ __('ui.no_held_sales') }}</div>
+
+            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                <template x-for="held in heldSales" :key="held.id">
+                    <div class="p-5">
+                        <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                            <div>
+                                <div class="font-black"><span x-text="held.number"></span> · <span x-text="held.customer_name"></span></div>
+                                <div class="mt-1 text-xs text-slate-500">
+                                    <span x-text="held.items.length"></span> {{ __('ui.items') }} · <span x-text="formatHeldTime(held.held_at)"></span>
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                                    <template x-for="item in held.items.slice(0,4)" :key="item.product_unit_id">
+                                        <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800"><span x-text="item.name"></span> × <span x-text="formatQty(item.quantity)"></span></span>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="btn-primary" type="button" @click="resumeHeldSale(held)">{{ __('ui.resume') }}</button>
+                                <button class="btn-secondary text-red-600" type="button" @click="releaseHeldSale(held)">{{ __('ui.release') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -309,8 +369,10 @@ function posWorkspace(config) {
         message: '',
         lastSale: null,
         saleKey: null,
+        holdKey: null,
         canDiscount: config.canDiscount,
         canCredit: config.canCredit,
+        canHold: config.canHold,
         canQuickCreateCustomers: config.canQuickCreateCustomers,
         paymentMethods: config.paymentMethods || [],
         paymentOpen: false,
@@ -321,13 +383,26 @@ function posWorkspace(config) {
         customerCreateOpen: false,
         customerCreating: false,
         newCustomer: {name: '', phone: '', credit_limit: '0.00'},
+        heldOpen: false,
+        heldSales: [],
+        heldLoading: false,
+        holding: false,
 
         init() {
             this.resetSaleKey();
+            this.resetHoldKey();
+
+            if (this.canHold) {
+                this.loadHeldSales();
+            }
         },
 
         resetSaleKey() {
             this.saleKey = crypto.randomUUID();
+        },
+
+        resetHoldKey() {
+            this.holdKey = crypto.randomUUID();
         },
 
         async searchProducts(autoAdd = false) {
@@ -617,6 +692,151 @@ function posWorkspace(config) {
             }
         },
 
+        async loadHeldSales() {
+            if (!this.canHold || this.heldLoading) return;
+
+            this.heldLoading = true;
+
+            try {
+                const response = await fetch(config.heldBaseUrl, {
+                    headers: {'Accept': 'application/json'}
+                });
+
+                if (!response.ok) throw new Error(config.labels.heldLoadFailed);
+
+                const payload = await response.json();
+                this.heldSales = payload.data || [];
+            } catch (error) {
+                this.message = error.message || config.labels.heldLoadFailed;
+            } finally {
+                this.heldLoading = false;
+            }
+        },
+
+        async holdCurrentSale() {
+            if (!this.canHold || !this.cart.length || this.holding) return;
+
+            this.holding = true;
+            this.message = '';
+
+            try {
+                const response = await fetch(config.heldBaseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': config.csrf,
+                    },
+                    body: JSON.stringify({
+                        idempotency_key: this.holdKey,
+                        customer_id: this.selectedCustomer?.id || null,
+                        sale_discount_amount: this.canDiscount ? String(this.saleDiscount || '0') : '0',
+                        items: this.cart.map(item => ({
+                            product_unit_id: item.product_unit_id,
+                            quantity: String(item.quantity),
+                            line_discount_amount: this.canDiscount ? String(item.line_discount_amount || '0') : '0',
+                        })),
+                    }),
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    const validation = payload.errors ? Object.values(payload.errors).flat().join(' ') : payload.message;
+                    throw new Error(validation || config.labels.holdFailed);
+                }
+
+                this.resetTransaction();
+                this.resetHoldKey();
+                await this.loadHeldSales();
+                this.message = payload.message || '';
+            } catch (error) {
+                this.message = error.message || config.labels.holdFailed;
+            } finally {
+                this.holding = false;
+            }
+        },
+
+        async resumeHeldSale(held) {
+            if (this.cart.length) {
+                this.message = config.labels.cartMustBeEmpty;
+                this.heldOpen = false;
+                return;
+            }
+
+            try {
+                const response = await fetch(config.heldBaseUrl + '/' + held.id + '/resume', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': config.csrf,
+                    },
+                });
+                const payload = await response.json();
+
+                if (!response.ok) throw new Error(payload.message || config.labels.holdFailed);
+
+                const resumed = payload.held_sale;
+                this.cart = (resumed.items || []).map(item => ({
+                    ...item,
+                    quantity: String(item.quantity),
+                    line_discount_amount: String(item.line_discount_amount || '0'),
+                }));
+                this.saleDiscount = String(resumed.sale_discount_amount || '0');
+                this.selectedCustomer = resumed.customer ? {
+                    ...resumed.customer,
+                    available_credit: String(Math.max(
+                        0,
+                        Number(resumed.customer.credit_limit || 0) - Number(resumed.customer.current_balance || 0)
+                    ).toFixed(2)),
+                } : null;
+                this.payments = [];
+                this.resetSaleKey();
+                this.resetHoldKey();
+                this.heldOpen = false;
+                await this.loadHeldSales();
+                this.$nextTick(() => this.$refs.search.focus());
+            } catch (error) {
+                this.message = error.message || config.labels.holdFailed;
+            }
+        },
+
+        async releaseHeldSale(held) {
+            try {
+                const response = await fetch(config.heldBaseUrl + '/' + held.id + '/release', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': config.csrf,
+                    },
+                });
+                const payload = await response.json();
+
+                if (!response.ok) throw new Error(payload.message || config.labels.holdFailed);
+
+                await this.loadHeldSales();
+            } catch (error) {
+                this.message = error.message || config.labels.holdFailed;
+            }
+        },
+
+        formatHeldTime(value) {
+            if (!value) return '';
+            return new Date(value).toLocaleString();
+        },
+
+        resetTransaction() {
+            this.cart = [];
+            this.saleDiscount = '0.00';
+            this.paymentOpen = false;
+            this.payments = [];
+            this.selectedCustomer = null;
+            this.customerQuery = '';
+            this.customerResults = [];
+            this.resetSaleKey();
+            this.$nextTick(() => this.$refs.search.focus());
+        },
+
         async completeSale() {
             if (!this.cart.length || this.submitting) return;
 
@@ -665,16 +885,9 @@ function posWorkspace(config) {
                 }
 
                 this.lastSale = payload.sale;
-                this.cart = [];
-                this.saleDiscount = '0.00';
-                this.paymentOpen = false;
-                this.payments = [];
-                this.selectedCustomer = null;
-                this.customerQuery = '';
-                this.customerResults = [];
                 this.message = '';
-                this.resetSaleKey();
-                this.$nextTick(() => this.$refs.search.focus());
+                this.resetTransaction();
+                this.resetHoldKey();
             } catch (error) {
                 this.message = error.message || config.labels.saleFailed;
             } finally {
