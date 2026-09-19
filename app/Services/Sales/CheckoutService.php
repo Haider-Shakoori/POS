@@ -40,6 +40,6 @@ class CheckoutService
                 customer: $customer,
                 actor: $actor,
             );
-        });
+        }, 3);
     }
 }
