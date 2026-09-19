@@ -15,6 +15,7 @@ use App\Models\ShopSetting;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Support\Decimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ class InventoryService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly InventoryCostService $costLayers,
+        private readonly BusinessDayService $days,
     ) {
     }
 
@@ -48,6 +50,24 @@ class InventoryService
             $notes,
             $idempotencyKey,
         ): StockMovement {
+            if ($idempotencyKey) {
+                $existing = StockMovement::query()
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->first();
+
+                if ($existing) {
+                    if ((int) $existing->product_id !== (int) $product->id) {
+                        throw new DomainException('The idempotency key belongs to another product movement.');
+                    }
+
+                    $this->costLayers->registerInboundMovement($existing);
+
+                    return $existing;
+                }
+            }
+
+            $this->days->lockOpen(now());
+
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->getKey());
 
             if ($existing = $this->existingIdempotentMovement($lockedProduct, $idempotencyKey)) {
