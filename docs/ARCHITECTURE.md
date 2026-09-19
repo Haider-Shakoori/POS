@@ -276,7 +276,7 @@ Batch 12 establishes thermal receipt printing, CODE128 label printing, safe cata
 - ShopSettingsStore is request-scoped and migration-safe. Locale middleware, dashboard and the application layout reuse the same settings model inside a request rather than issuing duplicate reads.
 - indexes cover sellable/purchasable product-unit traversal, product-first sale-item analytics and customer/date sales reporting, matching the established POS/report query shapes.
 - DocumentNumberService now guarantees that its SELECT ... FOR UPDATE sequence lock always runs inside a database transaction even when number generation is called outside another workflow transaction.
-- checkout, goods receipt, customer collection, supplier payment, purchase return and sale return retry the entire outer transaction up to three times on retryable database deadlocks. Existing idempotency keys and unique constraints remain the duplicate-prevention boundary.
+- checkout, goods receipt, customer collection, supplier payment, purchase return, sale return, shift opening/closing and business-day close retry the entire outer transaction up to three times on retryable database deadlocks. Existing idempotency keys and unique constraints remain the duplicate-prevention boundary.
 - existing product, batch, inventory-cost-layer, customer, supplier, shift and business-day row locks remain authoritative; Batch 13 does not introduce alternate stock, cash, receivable or payable calculations.
 
 Batch 13 hardens the production boundary without changing AFN-only, no-tax, FIFO/FEFO, ledger or closing semantics. Batch 14 proceeds to final golden-path QA and production readiness.
