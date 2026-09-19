@@ -40,6 +40,11 @@ This repository is a single-shop supermarket POS for Afghanistan. The core domai
 23. Customer receivables are append-only ledger entries with transactionally maintained current balances.
 24. Customer credit exposure is enforced under row lock against the configured credit limit unless an explicit override permission is granted.
 25. Sale payment evidence is recorded independently of the cash drawer; Batch 8 later maps cash-method evidence into drawer movements without rewriting sales.
+26. Completed sales are reversed by immutable return/void documents; original sale items and commercial totals are never edited.
+27. Returned physical stock restores the original sale stock allocations, including original expiry batches.
+28. Return COGS restores the exact FIFO cost consumptions used by the original sale.
+29. Reversals reduce outstanding customer receivables before creating refund evidence for previously paid value.
+30. Held sales are non-financial cart snapshots and never reserve inventory or create receivables/payments.
 
 ## Layers
 
@@ -113,3 +118,19 @@ Batch 4 establishes barcode/SKU/multilingual product lookup, the live unit-aware
 - payment settlement can update only payment_status, paid_amount, balance_due and settlement_finalized_at on a completed sale.
 
 Batch 5 establishes customer accounts, split payments, cash change, credit sales, receivables, collections and customer-ledger reconciliation. Cash-drawer movements remain intentionally deferred to Batch 8.
+
+
+## Returns, voids and held sales
+
+- held_sales and held_sale_items store resumable POS cart snapshots only; they do not touch stock, cost layers, payments or customer balances.
+- held carts preserve quantities, discounts and customer context, while final checkout still reruns current server pricing, permissions and stock validation.
+- sale_returns is the immutable reversal header for both partial/full returns and full remaining-sale voids.
+- sale_return_items calculate their reversible value from the original item's net value after line and allocated sale discounts.
+- sale_return_stock_allocations restores quantities through InventoryService against the exact original sale stock allocations and batches.
+- inventory_cost_layer_restorations restores the original FIFO layer quantities/costs consumed by the sale. Fallback-cost sales create/reuse a synthetic return layer at the original historical unit cost.
+- customer receivable reversal is capped by the sale's current balance_due; the rest of the returned value is paid-value refund.
+- sale_refunds is immutable refund evidence by payment method. Cash drawer effects remain deferred to Batch 8.
+- sales retain their original subtotal, discounts, net total, COGS and gross profit; only reversal summaries/status and current receivable balance are updated.
+- a void reverses every still-returnable item and can follow an earlier partial return without double-restoring quantity or cost.
+
+Batch 6 establishes held carts, partial/full sales returns, controlled voids, historical stock/COGS restoration, receivable reversal and refund evidence.
