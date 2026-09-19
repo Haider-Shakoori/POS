@@ -439,6 +439,7 @@ class ReportingService
 
         $returns = DB::table('sale_return_items')
             ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
             ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
@@ -522,6 +523,7 @@ class ReportingService
 
         $returns = DB::table('sale_return_items')
             ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
             ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
