@@ -665,4 +665,5 @@ return [
     'allow_negative_stock' => 'منفي موجودي اجازه',
     'save_settings' => 'تنظیمات خوندي کړئ',
     'settings_saved' => 'د دوکان تنظیمات په بریالیتوب خوندي شول.',
+    'login_throttled' => 'د ننوتلو هڅې ډېرې شوې. له :seconds ثانیو وروسته بیا هڅه وکړئ.',
 ];
