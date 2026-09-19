@@ -426,4 +426,7 @@ return [
     'post_purchase_return' => 'ثبت برگشت خرید',
     'supplier_payment_recorded' => 'پرداخت تأمین‌کننده :number با موفقیت ثبت شد.',
     'purchase_return_posted' => 'برگشت خرید :number با موفقیت ثبت شد.',
+    'transaction' => 'تراکنش',
+    'reference' => 'مرجع',
+    'amount' => 'مبلغ',
 ];
