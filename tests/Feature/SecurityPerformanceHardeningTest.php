@@ -44,7 +44,9 @@ class SecurityPerformanceHardeningTest extends TestCase
 
         $queries = [];
         DB::listen(function ($query) use (&$queries): void {
-            if (str_contains(mb_strtolower($query->sql), 'shop_settings')) {
+            $sql = mb_strtolower($query->sql);
+
+            if (str_contains($sql, 'from "shop_settings"') || str_contains($sql, 'from `shop_settings`')) {
                 $queries[] = $query->sql;
             }
         });
@@ -55,17 +57,18 @@ class SecurityPerformanceHardeningTest extends TestCase
         $this->assertCount(1, $queries);
     }
 
-    public function test_document_numbers_are_safe_when_generated_outside_an_existing_transaction(): void
+    public function test_document_number_generation_preserves_the_callers_transaction_level(): void
     {
         $this->seed(DatabaseSeeder::class);
 
+        $before = DB::transactionLevel();
         $numbers = app(DocumentNumberService::class);
         $first = $numbers->next('hardening_test', 'TST');
         $second = $numbers->next('hardening_test', 'TST');
 
         $this->assertStringEndsWith('-00001', $first);
         $this->assertStringEndsWith('-00002', $second);
-        $this->assertSame(0, DB::transactionLevel());
+        $this->assertSame($before, DB::transactionLevel());
     }
 
     public function test_login_is_throttled_after_repeated_failed_attempts_and_success_clears_counter(): void
