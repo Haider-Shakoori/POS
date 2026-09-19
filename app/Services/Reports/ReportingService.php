@@ -88,7 +88,23 @@ class ReportingService
             });
         }
 
-        return $query->get();
+        return $query->get()->map(function (object $row): object {
+            foreach ([
+                'subtotal',
+                'line_discount_total',
+                'sale_discount_amount',
+                'net_total',
+                'returned_total',
+                'cogs_total',
+                'gross_profit',
+                'paid_amount',
+                'balance_due',
+            ] as $field) {
+                $row->{$field} = Decimal::normalize((string) ($row->{$field} ?? 0), 2);
+            }
+
+            return $row;
+        });
     }
 
     private function financialSummary(CarbonImmutable $from, CarbonImmutable $to, array $filters): array
