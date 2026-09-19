@@ -43,7 +43,9 @@ class AccessControlSeeder extends Seeder
             'suppliers.manage' => 'Manage suppliers',
             'suppliers.pay' => 'Record supplier payments',
             'expenses.view' => 'View expenses',
-            'expenses.create' => 'Create expenses',
+            'expenses.create' => 'Create expenses and other income',
+            'cash.view' => 'View cash drawer',
+            'cash.manage' => 'Record manual cash drawer movements',
             'reports.view' => 'View reports',
             'reports.profit' => 'View profit reports',
             'shifts.open' => 'Open cashier shifts',
@@ -85,12 +87,12 @@ class AccessControlSeeder extends Seeder
                 'inventory.adjust', 'inventory.count', 'inventory.count.approve',
                 'customers.view', 'customers.manage', 'customers.quick_create', 'customers.collect',
                 'suppliers.view', 'suppliers.manage', 'suppliers.pay',
-                'expenses.view', 'expenses.create', 'reports.view', 'reports.profit',
+                'expenses.view', 'expenses.create', 'cash.view', 'cash.manage', 'reports.view', 'reports.profit',
                 'shifts.open', 'shifts.close',
             ],
             'cashier' => [
                 'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.hold', 'sales.credit',
-                'customers.view', 'customers.quick_create', 'customers.collect', 'shifts.open', 'shifts.close',
+                'customers.view', 'customers.quick_create', 'customers.collect', 'cash.view', 'shifts.open', 'shifts.close',
             ],
             'stock_keeper' => [
                 'purchases.view', 'purchases.create', 'purchases.receive',
@@ -100,7 +102,7 @@ class AccessControlSeeder extends Seeder
             'accountant' => [
                 'sales.view', 'purchases.view', 'purchases.record_payment',
                 'customers.view', 'customers.collect',
-                'suppliers.view', 'suppliers.pay', 'expenses.view', 'expenses.create',
+                'suppliers.view', 'suppliers.pay', 'expenses.view', 'expenses.create', 'cash.view',
                 'reports.view', 'reports.profit',
             ],
         ];
