@@ -51,6 +51,9 @@ class AccessControlSeeder extends Seeder
             'shifts.open' => 'Open cashier shifts',
             'shifts.close' => 'Close cashier shifts',
             'shifts.reopen' => 'Reopen closed shifts',
+            'business_days.view' => 'View daily closing',
+            'business_days.close' => 'Close business days',
+            'business_days.reopen' => 'Reopen business days',
             'settings.manage' => 'Manage shop settings',
             'users.manage' => 'Manage users and access',
             'audit.view' => 'View audit logs',
@@ -88,7 +91,7 @@ class AccessControlSeeder extends Seeder
                 'customers.view', 'customers.manage', 'customers.quick_create', 'customers.collect',
                 'suppliers.view', 'suppliers.manage', 'suppliers.pay',
                 'expenses.view', 'expenses.create', 'cash.view', 'cash.manage', 'reports.view', 'reports.profit',
-                'shifts.open', 'shifts.close',
+                'shifts.open', 'shifts.close', 'business_days.view', 'business_days.close',
             ],
             'cashier' => [
                 'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.hold', 'sales.credit',
@@ -103,7 +106,7 @@ class AccessControlSeeder extends Seeder
                 'sales.view', 'purchases.view', 'purchases.record_payment',
                 'customers.view', 'customers.collect',
                 'suppliers.view', 'suppliers.pay', 'expenses.view', 'expenses.create', 'cash.view',
-                'reports.view', 'reports.profit',
+                'reports.view', 'reports.profit', 'business_days.view', 'business_days.close',
             ],
         ];
 
