@@ -21,6 +21,9 @@ class AccessControlSeeder extends Seeder
             'purchases.create' => 'Create purchases',
             'purchases.approve' => 'Approve purchases',
             'inventory.view' => 'View inventory',
+            'inventory.products.manage' => 'Create and manage products',
+            'inventory.catalog.manage' => 'Manage categories, brands and units',
+            'inventory.opening_stock' => 'Record opening stock',
             'inventory.adjust' => 'Adjust inventory',
             'inventory.count' => 'Perform stock counts',
             'inventory.count.approve' => 'Approve stock counts',
@@ -67,7 +70,8 @@ class AccessControlSeeder extends Seeder
             'manager' => [
                 'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void', 'sales.discount',
                 'purchases.view', 'purchases.create', 'purchases.approve',
-                'inventory.view', 'inventory.adjust', 'inventory.count', 'inventory.count.approve',
+                'inventory.view', 'inventory.products.manage', 'inventory.catalog.manage', 'inventory.opening_stock',
+                'inventory.adjust', 'inventory.count', 'inventory.count.approve',
                 'customers.view', 'customers.manage', 'customers.collect',
                 'suppliers.view', 'suppliers.manage', 'suppliers.pay',
                 'expenses.view', 'expenses.create', 'reports.view', 'reports.profit',
@@ -78,7 +82,8 @@ class AccessControlSeeder extends Seeder
                 'customers.view', 'customers.collect', 'shifts.open', 'shifts.close',
             ],
             'stock_keeper' => [
-                'purchases.view', 'purchases.create', 'inventory.view',
+                'purchases.view', 'purchases.create',
+                'inventory.view', 'inventory.products.manage', 'inventory.catalog.manage', 'inventory.opening_stock',
                 'inventory.adjust', 'inventory.count', 'suppliers.view',
             ],
             'accountant' => [

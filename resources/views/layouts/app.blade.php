@@ -36,11 +36,20 @@
                         <span class="text-lg">▦</span><span>{{ __('ui.point_of_sale') }}</span>
                     </a>
                 @endif
+                @if(auth()->user()->hasPermission('inventory.view'))
+                    <a href="{{ route('inventory.products.index') }}" class="nav-link {{ request()->routeIs('inventory.products.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">□</span><span>{{ __('ui.products') }}</span>
+                    </a>
+                @endif
+                @if(auth()->user()->hasPermission('inventory.catalog.manage'))
+                    <a href="{{ route('inventory.catalog.index') }}" class="nav-link {{ request()->routeIs('inventory.catalog.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">◇</span><span>{{ __('ui.catalog_setup') }}</span>
+                    </a>
+                @endif
             </nav>
 
             <div class="mt-6 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{{ __('ui.next_modules') }}</div>
             <div class="mt-2 space-y-1 opacity-70">
-                <div class="nav-link cursor-default"><span>□</span><span>{{ __('ui.inventory') }}</span></div>
                 <div class="nav-link cursor-default"><span>◇</span><span>{{ __('ui.customers') }}</span></div>
                 <div class="nav-link cursor-default"><span>△</span><span>{{ __('ui.suppliers') }}</span></div>
                 <div class="nav-link cursor-default"><span>◌</span><span>{{ __('ui.reports') }}</span></div>
@@ -78,6 +87,11 @@
         </header>
 
         <div class="p-4 sm:p-6 lg:p-8">
+            @if(session('status'))
+                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {{ session('status') }}
+                </div>
+            @endif
             @yield('content')
         </div>
     </main>

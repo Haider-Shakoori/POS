@@ -61,4 +61,17 @@ final class Decimal
     {
         return self::compare($value, '0') < 0;
     }
+
+    public static function display(int|string $value, int $scale = self::QUANTITY_SCALE): string
+    {
+        $normalized = self::normalize($value, $scale);
+        $negative = str_starts_with($normalized, '-');
+        $unsigned = $negative ? substr($normalized, 1) : $normalized;
+        [$whole, $fraction] = array_pad(explode('.', $unsigned, 2), 2, '');
+
+        $whole = preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole) ?: $whole;
+        $fraction = rtrim($fraction, '0');
+
+        return ($negative ? '-' : '').$whole.($fraction !== '' ? '.'.$fraction : '');
+    }
 }
