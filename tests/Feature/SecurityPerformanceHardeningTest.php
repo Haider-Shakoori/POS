@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Documents\DocumentNumberService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
@@ -31,6 +33,39 @@ class SecurityPerformanceHardeningTest extends TestCase
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
             ->assertHeader('X-Permitted-Cross-Domain-Policies', 'none')
             ->assertHeader('Content-Security-Policy');
+    }
+
+    public function test_dashboard_reuses_one_shop_settings_query_per_request(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->roles()->attach(Role::query()->where('name', 'owner')->firstOrFail());
+
+        $queries = [];
+        DB::listen(function ($query) use (&$queries): void {
+            if (str_contains(mb_strtolower($query->sql), 'shop_settings')) {
+                $queries[] = $query->sql;
+            }
+        });
+
+        $this->withoutVite();
+        $this->actingAs($owner)->get('/dashboard')->assertOk();
+
+        $this->assertCount(1, $queries);
+    }
+
+    public function test_document_numbers_are_safe_when_generated_outside_an_existing_transaction(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $numbers = app(DocumentNumberService::class);
+        $first = $numbers->next('hardening_test', 'TST');
+        $second = $numbers->next('hardening_test', 'TST');
+
+        $this->assertStringEndsWith('-00001', $first);
+        $this->assertStringEndsWith('-00002', $second);
+        $this->assertSame(0, DB::transactionLevel());
     }
 
     public function test_login_is_throttled_after_repeated_failed_attempts_and_success_clears_counter(): void
