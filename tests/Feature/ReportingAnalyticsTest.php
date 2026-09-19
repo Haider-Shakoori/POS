@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\ExpenseCategory;
 use App\Models\PaymentMethod;
 use App\Models\Permission;
@@ -227,6 +228,108 @@ class ReportingAnalyticsTest extends TestCase
             ->get(route('reports.sales-csv', $filters))
             ->assertOk()
             ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+    }
+
+    public function test_customer_and_supplier_filters_scope_cross_report_analytics_and_headline_balances(): void
+    {
+        $category = Category::create([
+            'name_en' => 'Filtered Category',
+            'name_fa' => 'دسته فیلتر',
+            'name_ps' => 'فلټر کټګوري',
+            'sort_order' => 20,
+            'is_active' => true,
+        ]);
+
+        [$product, $piece] = $this->makeProduct($category->id);
+
+        app(GoodsReceiptService::class)->post([
+            'idempotency_key' => (string) Str::uuid(),
+            'supplier_id' => $this->supplier->id,
+            'received_at' => now()->toDateTimeString(),
+            'paid_amount' => '0.00',
+            'items' => [[
+                'product_unit_id' => $piece->id,
+                'quantity' => '10',
+                'unit_cost' => '10.0000',
+            ]],
+        ], $this->owner);
+
+        $selectedCustomer = Customer::create([
+            'name' => 'Selected Customer',
+            'phone' => '0700000101',
+            'credit_limit' => '1000.00',
+            'opening_balance' => '0.00',
+            'current_balance' => '0.00',
+            'is_active' => true,
+        ]);
+
+        Customer::create([
+            'name' => 'Other Customer',
+            'phone' => '0700000102',
+            'credit_limit' => '1000.00',
+            'opening_balance' => '75.00',
+            'current_balance' => '75.00',
+            'is_active' => true,
+        ]);
+
+        Supplier::create([
+            'name' => 'Other Reporting Supplier',
+            'phone' => '0700000103',
+            'opening_balance' => '125.00',
+            'current_balance' => '125.00',
+            'is_active' => true,
+        ]);
+
+        app(CheckoutService::class)->checkout([
+            'idempotency_key' => (string) Str::uuid(),
+            'customer_id' => $selectedCustomer->id,
+            'sale_discount_amount' => '0.00',
+            'items' => [[
+                'product_unit_id' => $piece->id,
+                'quantity' => '1',
+                'line_discount_amount' => '0.00',
+            ]],
+            'payments' => [[
+                'payment_method_id' => $this->bank->id,
+                'amount' => '30.00',
+            ]],
+        ], $this->owner);
+
+        $otherCustomer = Customer::query()->where('name', 'Other Customer')->firstOrFail();
+
+        app(CheckoutService::class)->checkout([
+            'idempotency_key' => (string) Str::uuid(),
+            'customer_id' => $otherCustomer->id,
+            'sale_discount_amount' => '0.00',
+            'items' => [[
+                'product_unit_id' => $piece->id,
+                'quantity' => '2',
+                'line_discount_amount' => '0.00',
+            ]],
+            'payments' => [[
+                'payment_method_id' => $this->bank->id,
+                'amount' => '60.00',
+            ]],
+        ], $this->owner);
+
+        $report = app(ReportingService::class)->build([
+            'from' => today()->toDateString(),
+            'to' => today()->toDateString(),
+            'customer_id' => $selectedCustomer->id,
+            'supplier_id' => $this->supplier->id,
+            'product_id' => $product->id,
+            'category_id' => $category->id,
+        ]);
+
+        $this->assertSame('30.00', $report['summary']['net_sales']);
+        $this->assertSame('0.00', $report['summary']['receivables']);
+        $this->assertSame('100.00', $report['summary']['payables']);
+
+        $this->assertSame('30.00', $report['salesTrend']->first()->net_total);
+        $this->assertSame('30.00', $report['topProducts']->first()->net_sales);
+        $this->assertSame('30.00', $report['categoryProfit']->first()->net_sales);
+        $this->assertSame('30', (string) $report['peakHours']->first()->net_total);
+        $this->assertSame('30', (string) $report['weekdays']->first()->net_total);
     }
 
     public function test_cashier_without_reports_permission_cannot_open_reports(): void

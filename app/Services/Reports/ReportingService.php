@@ -28,7 +28,7 @@ class ReportingService
                 'to' => $to->toDateString(),
             ],
             'summary' => $this->financialSummary($from, $to, $filters),
-            'salesTrend' => $this->salesTrend($from, $to),
+            'salesTrend' => $this->salesTrend($from, $to, $filters),
             'topProducts' => $this->productPerformance($from, $to, $filters, true),
             'slowProducts' => $this->productPerformance($from, $to, $filters, false),
             'categoryProfit' => $this->categoryProfit($from, $to, $filters),
@@ -37,8 +37,8 @@ class ReportingService
             'inventory' => $this->inventorySummary(),
             'expiring' => $this->expirySummary(),
             'closingHistory' => $this->closingHistory($from, $to),
-            'peakHours' => $this->peakHours($from, $to),
-            'weekdays' => $this->weekdayPerformance($from, $to),
+            'peakHours' => $this->peakHours($from, $to, $filters),
+            'weekdays' => $this->weekdayPerformance($from, $to, $filters),
         ];
     }
 
@@ -305,8 +305,12 @@ class ReportingService
             'collections' => Decimal::normalize((string) $collections, 2),
             'supplier_payments' => $supplierPayments,
             'aov' => $aov,
-            'receivables' => Decimal::normalize((string) Customer::query()->sum('current_balance'), 2),
-            'payables' => Decimal::normalize((string) Supplier::query()->sum('current_balance'), 2),
+            'receivables' => Decimal::normalize((string) Customer::query()
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->whereKey((int) $filters['customer_id']))
+                ->sum('current_balance'), 2),
+            'payables' => Decimal::normalize((string) Supplier::query()
+                ->when(! empty($filters['supplier_id']), fn ($q) => $q->whereKey((int) $filters['supplier_id']))
+                ->sum('current_balance'), 2),
             'inventory_value' => $this->inventoryValue(),
             'damaged_cost' => Decimal::normalize((string) DB::table('inventory_writeoffs')
                 ->where('writeoff_type', 'damage')
@@ -319,26 +323,64 @@ class ReportingService
         ];
     }
 
-    private function salesTrend(CarbonImmutable $from, CarbonImmutable $to): Collection
+    private function salesTrend(CarbonImmutable $from, CarbonImmutable $to, array $filters): Collection
     {
-        $sales = DB::table('sales')
-            ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
-            ->selectRaw('DATE(sold_at) as day')
-            ->selectRaw('COUNT(*) as sales_count')
-            ->selectRaw('COALESCE(SUM(net_total),0) as sales_net')
-            ->selectRaw('COALESCE(SUM(cogs_total),0) as sales_cogs')
-            ->groupByRaw('DATE(sold_at)')
-            ->get()
-            ->keyBy('day');
+        $itemFiltered = ! empty($filters['product_id']) || ! empty($filters['category_id']);
 
-        $returns = DB::table('sale_returns')
-            ->whereBetween('posted_at', [$from->startOfDay(), $to->endOfDay()])
-            ->selectRaw('DATE(posted_at) as day')
-            ->selectRaw('COALESCE(SUM(return_total),0) as returns_total')
-            ->selectRaw('COALESCE(SUM(cogs_reversed),0) as cogs_reversed')
-            ->groupByRaw('DATE(posted_at)')
-            ->get()
-            ->keyBy('day');
+        if ($itemFiltered) {
+            $sales = DB::table('sale_items')
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+                ->when(! empty($filters['product_id']), fn ($q) => $q->where('sale_items.product_id', (int) $filters['product_id']))
+                ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
+                ->selectRaw('DATE(sales.sold_at) as day')
+                ->selectRaw('COUNT(DISTINCT sales.id) as sales_count')
+                ->selectRaw('COALESCE(SUM(sale_items.line_net_total),0) as sales_net')
+                ->selectRaw('COALESCE(SUM(sale_items.cogs_amount),0) as sales_cogs')
+                ->groupByRaw('DATE(sales.sold_at)')
+                ->get()
+                ->keyBy('day');
+
+            $returns = DB::table('sale_return_items')
+                ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
+                ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+                ->when(! empty($filters['product_id']), fn ($q) => $q->where('sale_items.product_id', (int) $filters['product_id']))
+                ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
+                ->selectRaw('DATE(sale_returns.posted_at) as day')
+                ->selectRaw('COALESCE(SUM(sale_return_items.return_amount),0) as returns_total')
+                ->selectRaw('COALESCE(SUM(sale_return_items.cogs_amount),0) as cogs_reversed')
+                ->groupByRaw('DATE(sale_returns.posted_at)')
+                ->get()
+                ->keyBy('day');
+        } else {
+            $sales = DB::table('sales')
+                ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->where('customer_id', (int) $filters['customer_id']))
+                ->selectRaw('DATE(sold_at) as day')
+                ->selectRaw('COUNT(*) as sales_count')
+                ->selectRaw('COALESCE(SUM(net_total),0) as sales_net')
+                ->selectRaw('COALESCE(SUM(cogs_total),0) as sales_cogs')
+                ->groupByRaw('DATE(sold_at)')
+                ->get()
+                ->keyBy('day');
+
+            $returns = DB::table('sale_returns')
+                ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
+                ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+                ->selectRaw('DATE(sale_returns.posted_at) as day')
+                ->selectRaw('COALESCE(SUM(sale_returns.return_total),0) as returns_total')
+                ->selectRaw('COALESCE(SUM(sale_returns.cogs_reversed),0) as cogs_reversed')
+                ->groupByRaw('DATE(sale_returns.posted_at)')
+                ->get()
+                ->keyBy('day');
+        }
 
         return $sales->keys()->merge($returns->keys())->unique()->sort()->values()
             ->map(function ($day) use ($sales, $returns): object {
@@ -372,6 +414,7 @@ class ReportingService
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
             ->when(! empty($filters['product_id']), fn ($q) => $q->where('products.id', (int) $filters['product_id']))
             ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
             ->select(
@@ -396,9 +439,11 @@ class ReportingService
 
         $returns = DB::table('sale_return_items')
             ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
             ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
             ->when(! empty($filters['product_id']), fn ($q) => $q->where('products.id', (int) $filters['product_id']))
             ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
             ->select('products.id')
@@ -461,6 +506,8 @@ class ReportingService
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+            ->when(! empty($filters['product_id']), fn ($q) => $q->where('sale_items.product_id', (int) $filters['product_id']))
             ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
             ->select(
                 'categories.id',
@@ -476,10 +523,13 @@ class ReportingService
 
         $returns = DB::table('sale_return_items')
             ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
             ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+            ->when(! empty($filters['product_id']), fn ($q) => $q->where('sale_items.product_id', (int) $filters['product_id']))
             ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
             ->select('categories.id')
             ->selectRaw('SUM(sale_return_items.return_amount) as returned_value')
@@ -615,12 +665,32 @@ class ReportingService
             ->get();
     }
 
-    private function peakHours(CarbonImmutable $from, CarbonImmutable $to): Collection
+    private function peakHours(CarbonImmutable $from, CarbonImmutable $to, array $filters): Collection
     {
-        $hourExpression = $this->hourBucketExpression();
+        $itemFiltered = ! empty($filters['product_id']) || ! empty($filters['category_id']);
+        $column = $itemFiltered ? 'sales.sold_at' : 'sold_at';
+        $hourExpression = $this->hourBucketExpression($column);
+
+        if ($itemFiltered) {
+            return DB::table('sale_items')
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+                ->when(! empty($filters['product_id']), fn ($q) => $q->where('sale_items.product_id', (int) $filters['product_id']))
+                ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
+                ->selectRaw($hourExpression.' as hour')
+                ->selectRaw('COUNT(DISTINCT sales.id) as sales_count')
+                ->selectRaw('SUM(sale_items.line_net_total) as net_total')
+                ->groupByRaw($hourExpression)
+                ->orderByDesc('sales_count')
+                ->limit(24)
+                ->get();
+        }
 
         return DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['customer_id']), fn ($q) => $q->where('customer_id', (int) $filters['customer_id']))
             ->selectRaw($hourExpression.' as hour')
             ->selectRaw('COUNT(*) as sales_count')
             ->selectRaw('SUM(net_total) as net_total')
@@ -630,12 +700,31 @@ class ReportingService
             ->get();
     }
 
-    private function weekdayPerformance(CarbonImmutable $from, CarbonImmutable $to): Collection
+    private function weekdayPerformance(CarbonImmutable $from, CarbonImmutable $to, array $filters): Collection
     {
-        $weekdayExpression = $this->weekdayBucketExpression();
+        $itemFiltered = ! empty($filters['product_id']) || ! empty($filters['category_id']);
+        $column = $itemFiltered ? 'sales.sold_at' : 'sold_at';
+        $weekdayExpression = $this->weekdayBucketExpression($column);
+
+        if ($itemFiltered) {
+            return DB::table('sale_items')
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+                ->when(! empty($filters['customer_id']), fn ($q) => $q->where('sales.customer_id', (int) $filters['customer_id']))
+                ->when(! empty($filters['product_id']), fn ($q) => $q->where('sale_items.product_id', (int) $filters['product_id']))
+                ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
+                ->selectRaw($weekdayExpression.' as weekday_index')
+                ->selectRaw('COUNT(DISTINCT sales.id) as sales_count')
+                ->selectRaw('SUM(sale_items.line_net_total) as net_total')
+                ->groupByRaw($weekdayExpression)
+                ->orderBy('weekday_index')
+                ->get();
+        }
 
         return DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['customer_id']), fn ($q) => $q->where('customer_id', (int) $filters['customer_id']))
             ->selectRaw($weekdayExpression.' as weekday_index')
             ->selectRaw('COUNT(*) as sales_count')
             ->selectRaw('SUM(net_total) as net_total')
@@ -644,19 +733,19 @@ class ReportingService
             ->get();
     }
 
-    private function hourBucketExpression(): string
+    private function hourBucketExpression(string $column = 'sold_at'): string
     {
         return DB::connection()->getDriverName() === 'sqlite'
-            ? "CAST(strftime('%H', sold_at) AS INTEGER)"
-            : 'HOUR(sold_at)';
+            ? "CAST(strftime('%H', {$column}) AS INTEGER)"
+            : "HOUR({$column})";
     }
 
-    private function weekdayBucketExpression(): string
+    private function weekdayBucketExpression(string $column = 'sold_at'): string
     {
         // Normalize to Monday=0 ... Sunday=6 on both MySQL and SQLite.
         return DB::connection()->getDriverName() === 'sqlite'
-            ? "((CAST(strftime('%w', sold_at) AS INTEGER) + 6) % 7)"
-            : 'WEEKDAY(sold_at)';
+            ? "((CAST(strftime('%w', {$column}) AS INTEGER) + 6) % 7)"
+            : "WEEKDAY({$column})";
     }
 
     private function inventoryValue(): string
