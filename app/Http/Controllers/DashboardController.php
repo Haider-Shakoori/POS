@@ -3,16 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashierShift;
-use App\Models\ShopSetting;
+use App\Support\ShopSettingsStore;
 use App\Support\Money;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(ShopSettingsStore $settings): View
     {
         return view('dashboard', [
-            'shop' => ShopSetting::query()->first(),
+            'shop' => $settings->get(),
             'openShift' => CashierShift::query()
                 ->where('user_id', auth()->id())
                 ->where('status', 'open')
