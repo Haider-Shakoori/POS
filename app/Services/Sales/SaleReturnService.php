@@ -54,11 +54,14 @@ class SaleReturnService
     {
         return DB::transaction(function () use ($sale, $data, $actor, $type): SaleReturn {
             if ($existing = SaleReturn::query()
+                ->with(['items', 'refunds'])
                 ->where('idempotency_key', $data['idempotency_key'])
                 ->first()) {
                 if ((int) $existing->sale_id !== (int) $sale->id || $existing->type !== $type) {
                     throw new DomainException('The return idempotency key is already bound to another reversal.');
                 }
+
+                $this->assertRetryMatches($existing, $data, $type);
 
                 return $existing->load([
                     'items.saleItem',
@@ -261,6 +264,59 @@ class SaleReturnService
                 'refunds.paymentMethod',
             ]);
         });
+    }
+
+    private function assertRetryMatches(SaleReturn $existing, array $data, string $type): void
+    {
+        if (trim((string) ($data['reason'] ?? '')) !== $existing->reason) {
+            throw new DomainException('The return idempotency key is already bound to another reason.');
+        }
+
+        if ($type === 'return') {
+            $requestedItems = collect($data['items'] ?? [])
+                ->map(fn (array $item) => [
+                    'sale_item_id' => (int) $item['sale_item_id'],
+                    'quantity' => Decimal::normalize($item['quantity']),
+                ])
+                ->sortBy('sale_item_id')
+                ->values();
+
+            $existingItems = $existing->items
+                ->map(fn (SaleReturnItem $item) => [
+                    'sale_item_id' => (int) $item->sale_item_id,
+                    'quantity' => Decimal::normalize($item->quantity),
+                ])
+                ->sortBy('sale_item_id')
+                ->values();
+
+            if ($requestedItems->count() !== $existingItems->count()) {
+                throw new DomainException('The return idempotency key is already bound to another item set.');
+            }
+
+            foreach ($requestedItems as $index => $requested) {
+                $recorded = $existingItems[$index];
+
+                if (
+                    $requested['sale_item_id'] !== $recorded['sale_item_id']
+                    || Decimal::compare($requested['quantity'], $recorded['quantity']) !== 0
+                ) {
+                    throw new DomainException('The return idempotency key is already bound to another item set.');
+                }
+            }
+        }
+
+        $requestedMethods = collect($data['refunds'] ?? [])
+            ->pluck('payment_method_id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+        $recordedMethods = $existing->refunds
+            ->pluck('payment_method_id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($requestedMethods->all() !== $recordedMethods->all()) {
+            throw new DomainException('The return idempotency key is already bound to another refund method set.');
+        }
     }
 
     private function prepareRequestedItems(Sale $sale, array $items): Collection
