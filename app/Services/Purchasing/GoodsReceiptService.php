@@ -3,18 +3,22 @@
 namespace App\Services\Purchasing;
 
 use App\Enums\GoodsReceiptStatus;
+use App\Enums\PurchaseExpenseType;
 use App\Enums\PurchaseOrderStatus;
+use App\Enums\PurchasePaymentMethod;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
 use App\Models\ProductUnit;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchasePayment;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryService;
 use App\Support\Decimal;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -32,17 +36,36 @@ class GoodsReceiptService
     public function post(array $data, User $actor): GoodsReceipt
     {
         return DB::transaction(function () use ($data, $actor): GoodsReceipt {
+            if (! $actor->hasPermission('purchases.receive')) {
+                throw new DomainException('The user is not allowed to receive purchases.');
+            }
+
+            $requestedOrderId = ! empty($data['purchase_order_id'])
+                ? (int) $data['purchase_order_id']
+                : null;
+
             if ($existing = GoodsReceipt::query()->where('idempotency_key', $data['idempotency_key'])->first()) {
+                if (
+                    (int) $existing->supplier_id !== (int) $data['supplier_id']
+                    || ($existing->purchase_order_id ? (int) $existing->purchase_order_id : null) !== $requestedOrderId
+                ) {
+                    throw new DomainException('The idempotency key is already bound to another goods receipt.');
+                }
+
                 return $existing->load(['supplier', 'purchaseOrder', 'items.product', 'expenses', 'payments']);
+            }
+
+            if (! Supplier::query()->whereKey($data['supplier_id'])->where('is_active', true)->exists()) {
+                throw new DomainException('The selected supplier is not active.');
             }
 
             $order = null;
 
-            if (! empty($data['purchase_order_id'])) {
+            if ($requestedOrderId) {
                 $order = PurchaseOrder::query()
                     ->with(['items.product', 'items.productUnit.unit'])
                     ->lockForUpdate()
-                    ->findOrFail($data['purchase_order_id']);
+                    ->findOrFail($requestedOrderId);
 
                 if (! $order->isReceivable()) {
                     throw new DomainException('The purchase order is not open for receiving.');
@@ -51,6 +74,8 @@ class GoodsReceiptService
                 if ((int) $order->supplier_id !== (int) $data['supplier_id']) {
                     throw new DomainException('Goods receipt supplier must match the purchase order supplier.');
                 }
+            } elseif (! $actor->hasPermission('purchases.direct_receive')) {
+                throw new DomainException('The user is not allowed to post direct goods receipts.');
             }
 
             $preparedItems = $this->prepareItems($data['items'], $order);
@@ -109,6 +134,16 @@ class GoodsReceiptService
 
             if (Decimal::isNegative($paidAmount) || Decimal::compare($paidAmount, $netTotal) > 0) {
                 throw new DomainException('Paid amount cannot exceed the goods receipt total.');
+            }
+
+            if (Decimal::isPositive($paidAmount)) {
+                if (! $actor->hasPermission('purchases.record_payment')) {
+                    throw new DomainException('The user is not allowed to record a purchase payment.');
+                }
+
+                if (empty($data['payment_method']) || ! PurchasePaymentMethod::tryFrom((string) $data['payment_method'])) {
+                    throw new DomainException('A valid payment method is required when payment is recorded.');
+                }
             }
 
             $receipt = GoodsReceipt::create([
@@ -236,6 +271,7 @@ class GoodsReceiptService
                 'purchaseOrder',
                 'items.product',
                 'items.productUnit.unit',
+                'items.stockMovement',
                 'expenses',
                 'payments',
             ]);
@@ -272,10 +308,15 @@ class GoodsReceiptService
 
                 $productUnit = $poItem->productUnit;
             } else {
+                if (! array_key_exists('unit_cost', $item)) {
+                    throw new DomainException('Direct receipt lines require an explicit unit cost.');
+                }
+
                 $productUnit = ProductUnit::query()
                     ->with(['product', 'unit'])
                     ->whereKey($item['product_unit_id'])
                     ->where('can_purchase', true)
+                    ->whereHas('product', fn ($query) => $query->where('is_active', true))
                     ->firstOrFail();
             }
 
@@ -314,6 +355,14 @@ class GoodsReceiptService
                 throw new DomainException('Receipt line discount is invalid.');
             }
 
+            if (
+                ! empty($item['manufactured_at'])
+                && ! empty($item['expires_at'])
+                && CarbonImmutable::parse($item['expires_at'])->lt(CarbonImmutable::parse($item['manufactured_at']))
+            ) {
+                throw new DomainException('Expiry date cannot be before manufacture date.');
+            }
+
             if ($productUnit->product->track_expiry) {
                 if (empty($item['batch_number']) || empty($item['expires_at'])) {
                     throw new DomainException('Batch number and expiry date are required for expiry-tracked products.');
@@ -347,6 +396,10 @@ class GoodsReceiptService
         $prepared = [];
 
         foreach ($expenses as $expense) {
+            if (empty($expense['type']) || ! PurchaseExpenseType::tryFrom((string) $expense['type'])) {
+                throw new DomainException('Invalid purchase expense type.');
+            }
+
             $amount = Decimal::normalize($expense['amount'], 2);
 
             if (! Decimal::isPositive($amount)) {

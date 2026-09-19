@@ -6,6 +6,7 @@ use App\Enums\PurchaseOrderStatus;
 use App\Models\ProductUnit;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Documents\DocumentNumberService;
@@ -24,6 +25,10 @@ class PurchaseOrderService
     public function create(array $data, User $actor): PurchaseOrder
     {
         return DB::transaction(function () use ($data, $actor): PurchaseOrder {
+            if (! Supplier::query()->whereKey($data['supplier_id'])->where('is_active', true)->exists()) {
+                throw new DomainException('The selected supplier is not active.');
+            }
+
             $items = $this->prepareItems($data['items']);
             $subtotal = '0.00';
             $lineDiscountTotal = '0.00';
@@ -144,6 +149,7 @@ class PurchaseOrderService
                 ->with(['product', 'unit'])
                 ->whereKey($item['product_unit_id'])
                 ->where('can_purchase', true)
+                ->whereHas('product', fn ($query) => $query->where('is_active', true))
                 ->firstOrFail();
 
             $identity = $productUnit->product_id.':'.$productUnit->id;
