@@ -39,6 +39,13 @@ class CustomerCollectionService
                     throw new DomainException('The collection idempotency key belongs to another customer.');
                 }
 
+                if (
+                    (int) $existing->payment_method_id !== (int) $data['payment_method_id']
+                    || Decimal::compare($existing->amount, Decimal::normalize($data['amount'], 2)) !== 0
+                ) {
+                    throw new DomainException('The collection idempotency key is already bound to another collection payload.');
+                }
+
                 return $existing->load(['paymentMethod', 'allocations.sale']);
             }
 
