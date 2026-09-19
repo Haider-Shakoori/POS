@@ -665,4 +665,5 @@ return [
     'allow_negative_stock' => 'اجازه موجودی منفی',
     'save_settings' => 'ذخیره تنظیمات',
     'settings_saved' => 'تنظیمات فروشگاه با موفقیت ذخیره شد.',
+    'login_throttled' => 'تلاش‌های ورود بیش از حد است. پس از :seconds ثانیه دوباره کوشش کنید.',
 ];
