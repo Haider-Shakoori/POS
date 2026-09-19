@@ -8,7 +8,7 @@ class StoreCustomerRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasPermission('customers.manage');
+        return (bool) ($this->user()?->hasPermission('customers.manage') || $this->user()?->hasPermission('customers.quick_create'));
     }
 
     public function rules(): array
