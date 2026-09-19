@@ -52,25 +52,14 @@ class InventoryService
             }
 
             $sourceUnit = ProductUnit::query()
+                ->with('unit')
                 ->where('product_id', $lockedProduct->id)
                 ->where('unit_id', $sourceUnitId)
                 ->firstOrFail();
 
-            $normalizedSourceQuantity = Decimal::normalize($sourceQuantity);
-
-            if (! Decimal::isPositive($normalizedSourceQuantity)) {
-                throw new DomainException('Opening stock quantity must be greater than zero.');
-            }
-
-            $baseQuantity = Decimal::multiply(
-                $normalizedSourceQuantity,
-                $sourceUnit->conversion_factor,
-            );
-
-            $normalizedSourceCost = $sourceUnitCost !== null
-                ? Decimal::normalize($sourceUnitCost, 4)
-                : null;
-
+            $normalizedSourceQuantity = $this->normalizeSourceQuantity($sourceUnit, $sourceQuantity);
+            $baseQuantity = Decimal::multiply($normalizedSourceQuantity, $sourceUnit->conversion_factor);
+            $normalizedSourceCost = $sourceUnitCost !== null ? Decimal::normalize($sourceUnitCost, 4) : null;
             $baseUnitCost = $normalizedSourceCost !== null
                 ? Decimal::divide($normalizedSourceCost, $sourceUnit->conversion_factor, 4)
                 : null;
@@ -90,6 +79,73 @@ class InventoryService
                 notes: $notes,
                 idempotencyKey: $idempotencyKey ?: (string) Str::uuid(),
             );
+        });
+    }
+
+    public function receivePurchaseStock(
+        ProductUnit $productUnit,
+        string $sourceQuantity,
+        ?array $batchData,
+        string $sourceUnitLandedCost,
+        string $baseUnitLandedCost,
+        ?User $actor,
+        string $referenceType,
+        int $referenceId,
+        string $idempotencyKey,
+        ?string $notes = null,
+    ): StockMovement {
+        return DB::transaction(function () use (
+            $productUnit,
+            $sourceQuantity,
+            $batchData,
+            $sourceUnitLandedCost,
+            $baseUnitLandedCost,
+            $actor,
+            $referenceType,
+            $referenceId,
+            $idempotencyKey,
+            $notes,
+        ): StockMovement {
+            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($productUnit->product_id);
+
+            if ($existing = $this->existingIdempotentMovement($lockedProduct, $idempotencyKey)) {
+                return $existing;
+            }
+
+            $sourceUnit = ProductUnit::query()
+                ->with('unit')
+                ->whereKey($productUnit->id)
+                ->where('product_id', $lockedProduct->id)
+                ->where('can_purchase', true)
+                ->firstOrFail();
+
+            $normalizedSourceQuantity = $this->normalizeSourceQuantity($sourceUnit, $sourceQuantity);
+            $baseQuantity = Decimal::multiply($normalizedSourceQuantity, $sourceUnit->conversion_factor);
+            $normalizedSourceCost = Decimal::normalize($sourceUnitLandedCost, 4);
+            $normalizedBaseCost = Decimal::normalize($baseUnitLandedCost, 4);
+            $batch = $this->resolveBatch($lockedProduct, $batchData);
+
+            $movement = $this->applyLockedMovement(
+                product: $lockedProduct,
+                type: StockMovementType::Purchase,
+                baseQuantity: $baseQuantity,
+                batch: $batch,
+                sourceUnit: $sourceUnit,
+                sourceQuantity: $normalizedSourceQuantity,
+                sourceUnitCost: $normalizedSourceCost,
+                unitCostBase: $normalizedBaseCost,
+                actor: $actor,
+                notes: $notes,
+                referenceType: $referenceType,
+                referenceId: $referenceId,
+                idempotencyKey: $idempotencyKey,
+            );
+
+            $lockedProduct->forceFill([
+                'purchase_cost' => Decimal::round($normalizedBaseCost, 2),
+            ])->save();
+
+            return $movement;
         });
     }
 
@@ -140,6 +196,21 @@ class InventoryService
                 idempotencyKey: $idempotencyKey ?: (string) Str::uuid(),
             );
         });
+    }
+
+    private function normalizeSourceQuantity(ProductUnit $productUnit, string $quantity): string
+    {
+        $normalized = Decimal::normalize($quantity);
+
+        if (! Decimal::isPositive($normalized)) {
+            throw new DomainException('Stock quantity must be greater than zero.');
+        }
+
+        if (Decimal::fractionalDigits($quantity) > $productUnit->unit->decimal_places) {
+            throw new DomainException('Quantity exceeds the decimal precision allowed by the selected unit.');
+        }
+
+        return $normalized;
     }
 
     private function existingIdempotentMovement(Product $product, ?string $idempotencyKey): ?StockMovement

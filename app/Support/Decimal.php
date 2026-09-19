@@ -21,6 +21,16 @@ final class Decimal
         }
     }
 
+    public static function round(int|string $value, int $scale): string
+    {
+        try {
+            return (string) BigDecimal::of((string) $value)
+                ->toScale($scale, RoundingMode::HalfUp);
+        } catch (MathException $exception) {
+            throw new InvalidArgumentException('Invalid decimal value.', 0, $exception);
+        }
+    }
+
     public static function add(int|string $left, int|string $right, int $scale = self::QUANTITY_SCALE): string
     {
         try {
@@ -32,6 +42,17 @@ final class Decimal
         }
     }
 
+    public static function subtract(int|string $left, int|string $right, int $scale = self::QUANTITY_SCALE): string
+    {
+        try {
+            return (string) BigDecimal::of((string) $left)
+                ->minus((string) $right)
+                ->toScale($scale, RoundingMode::Unnecessary);
+        } catch (MathException $exception) {
+            throw new InvalidArgumentException('Decimal subtraction exceeds the supported precision.', 0, $exception);
+        }
+    }
+
     public static function multiply(int|string $left, int|string $right, int $scale = self::QUANTITY_SCALE): string
     {
         try {
@@ -40,6 +61,17 @@ final class Decimal
                 ->toScale($scale, RoundingMode::Unnecessary);
         } catch (MathException $exception) {
             throw new InvalidArgumentException('Decimal multiplication exceeds the supported precision.', 0, $exception);
+        }
+    }
+
+    public static function multiplyRounded(int|string $left, int|string $right, int $scale): string
+    {
+        try {
+            return (string) BigDecimal::of((string) $left)
+                ->multipliedBy((string) $right)
+                ->toScale($scale, RoundingMode::HalfUp);
+        } catch (MathException $exception) {
+            throw new InvalidArgumentException('Invalid decimal multiplication.', 0, $exception);
         }
     }
 
