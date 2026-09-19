@@ -29,13 +29,16 @@ class HeldSaleService
             }
 
             if ($existing = HeldSale::query()
+                ->with('items')
                 ->where('idempotency_key', $data['idempotency_key'])
                 ->first()) {
                 if ((int) $existing->cashier_user_id !== (int) $actor->id) {
                     throw new DomainException('The hold idempotency key belongs to another cashier.');
                 }
 
-                return $existing->load('items');
+                $this->assertRetryMatches($existing, $data);
+
+                return $existing;
             }
 
             $customer = null;
@@ -100,6 +103,10 @@ class HeldSaleService
             $locked = HeldSale::query()->with('items')->lockForUpdate()->findOrFail($held->id);
             $this->authorizeOwnership($locked, $actor);
 
+            if ($locked->status === 'resumed') {
+                return $locked->fresh(['customer', 'items.productUnit.product', 'items.productUnit.unit']);
+            }
+
             if ($locked->status !== 'held') {
                 throw new DomainException('Only an active held sale can be resumed.');
             }
@@ -126,6 +133,10 @@ class HeldSaleService
             $locked = HeldSale::query()->lockForUpdate()->findOrFail($held->id);
             $this->authorizeOwnership($locked, $actor);
 
+            if ($locked->status === 'released') {
+                return $locked->fresh();
+            }
+
             if ($locked->status !== 'held') {
                 throw new DomainException('Only an active held sale can be released.');
             }
@@ -144,6 +155,44 @@ class HeldSaleService
 
             return $locked->fresh();
         });
+    }
+
+    private function assertRetryMatches(HeldSale $existing, array $data): void
+    {
+        $requestedCustomerId = ! empty($data['customer_id']) ? (int) $data['customer_id'] : null;
+        $existingCustomerId = $existing->customer_id ? (int) $existing->customer_id : null;
+
+        if ($requestedCustomerId !== $existingCustomerId) {
+            throw new DomainException('The hold idempotency key is already bound to another customer.');
+        }
+
+        $requestedDiscount = Decimal::normalize($data['sale_discount_amount'] ?? '0', 2);
+
+        if (Decimal::compare($requestedDiscount, $existing->sale_discount_amount) !== 0) {
+            throw new DomainException('The hold idempotency key is already bound to another discount.');
+        }
+
+        $requestedItems = collect($data['items'] ?? [])
+            ->map(fn (array $item) => [
+                'product_unit_id' => (int) $item['product_unit_id'],
+                'quantity' => Decimal::normalize($item['quantity']),
+                'line_discount_amount' => Decimal::normalize($item['line_discount_amount'] ?? '0', 2),
+            ])
+            ->sortBy('product_unit_id')
+            ->values();
+
+        $existingItems = $existing->items
+            ->map(fn ($item) => [
+                'product_unit_id' => (int) $item->product_unit_id,
+                'quantity' => Decimal::normalize($item->quantity),
+                'line_discount_amount' => Decimal::normalize($item->line_discount_amount, 2),
+            ])
+            ->sortBy('product_unit_id')
+            ->values();
+
+        if ($requestedItems->all() !== $existingItems->all()) {
+            throw new DomainException('The hold idempotency key is already bound to another cart.');
+        }
     }
 
     private function prepareItems(array $items, User $actor): array
