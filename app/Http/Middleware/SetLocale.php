@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ShopSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -15,9 +16,12 @@ class SetLocale
         $preferred = $request->user()?->preferred_locale;
         $sessionLocale = $request->session()->get('locale');
 
+        $shopLocale = ShopSetting::query()->value('default_locale');
+        $fallback = in_array($shopLocale, $supported, true) ? $shopLocale : config('app.locale');
+
         $locale = in_array($preferred, $supported, true)
             ? $preferred
-            : (in_array($sessionLocale, $supported, true) ? $sessionLocale : config('app.locale'));
+            : (in_array($sessionLocale, $supported, true) ? $sessionLocale : $fallback);
 
         App::setLocale($locale);
 
