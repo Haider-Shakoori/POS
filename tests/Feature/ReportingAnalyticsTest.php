@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\ExpenseCategory;
 use App\Models\PaymentMethod;
+use App\Models\Permission;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\Supplier;
@@ -235,6 +236,35 @@ class ReportingAnalyticsTest extends TestCase
         $this->actingAs($this->cashier)
             ->get(route('reports.index'))
             ->assertForbidden();
+    }
+
+
+    public function test_report_viewer_without_profit_permission_cannot_export_profit_columns(): void
+    {
+        $viewer = User::factory()->create();
+        $role = Role::create([
+            'name' => 'report_viewer',
+            'label' => 'Report Viewer',
+        ]);
+        $role->permissions()->attach(
+            Permission::query()->where('name', 'reports.view')->firstOrFail()
+        );
+        $viewer->roles()->attach($role);
+
+        $this->assertTrue($viewer->hasPermission('reports.view'));
+        $this->assertFalse($viewer->hasPermission('reports.profit'));
+
+        $this->actingAs($viewer)
+            ->get(route('reports.index'))
+            ->assertOk()
+            ->assertDontSee('Gross Profit');
+
+        $response = $this->actingAs($viewer)
+            ->get(route('reports.sales-csv'));
+
+        $response->assertOk();
+        $this->assertStringNotContainsString('Gross Profit', $response->streamedContent());
+        $this->assertStringNotContainsString('COGS', $response->streamedContent());
     }
 
     private function makeProduct(?int $categoryId): array
