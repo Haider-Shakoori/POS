@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\GoodsReceipt;
 use App\Models\InventoryCostLayer;
+use App\Models\PaymentMethod;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductBatch;
