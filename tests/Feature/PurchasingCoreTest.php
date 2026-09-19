@@ -89,7 +89,7 @@ class PurchasingCoreTest extends TestCase
             'idempotency_key' => (string) Str::uuid(),
             'supplier_id' => $this->supplier->id,
             'purchase_order_id' => $order->id,
-            'received_at' => '2026-09-19 12:00:00',
+            'received_at' => now()->toDateTimeString(),
             'paid_amount' => '1000.00',
             'payment_method' => 'cash',
             'items' => [[
