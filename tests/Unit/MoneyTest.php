@@ -5,7 +5,7 @@ namespace Tests\Unit;
 use App\Support\Money;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class MoneyTest extends TestCase
 {
