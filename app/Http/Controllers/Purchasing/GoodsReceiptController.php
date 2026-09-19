@@ -93,11 +93,55 @@ class GoodsReceiptController extends Controller
             'postedBy',
             'items.product',
             'items.productUnit.unit',
-            'items.stockMovement',
+            'items.stockMovement.batch',
+            'items.costLayer',
+            'items.purchaseReturnItems',
             'expenses',
             'payments',
+            'supplierPaymentAllocations.payment',
+            'purchaseReturns.items.goodsReceiptItem',
         ]);
 
-        return view('purchasing.receipts.show', ['receipt' => $goodsReceipt]);
+        $returnedQuantities = [];
+        $returnableQuantities = [];
+
+        foreach ($goodsReceipt->items as $item) {
+            $returned = '0.000000';
+
+            foreach ($item->purchaseReturnItems as $returnItem) {
+                $returned = Decimal::add($returned, $returnItem->quantity);
+            }
+
+            $receiptRemaining = Decimal::subtract($item->quantity, $returned);
+            $layerRemaining = $item->costLayer
+                ? Decimal::divide($item->costLayer->remaining_quantity_base, $item->conversion_factor)
+                : '0.000000';
+
+            $physicalBase = $item->stockMovement?->batch
+                ? $item->stockMovement->batch->stock_on_hand
+                : $item->product->stock_on_hand;
+            $physicalRemaining = Decimal::divide($physicalBase, $item->conversion_factor);
+
+            $returnable = $receiptRemaining;
+
+            if (Decimal::compare($layerRemaining, $returnable) < 0) {
+                $returnable = $layerRemaining;
+            }
+
+            if (Decimal::compare($physicalRemaining, $returnable) < 0) {
+                $returnable = $physicalRemaining;
+            }
+
+            $returnedQuantities[$item->id] = $returned;
+            $returnableQuantities[$item->id] = Decimal::isNegative($returnable)
+                ? '0.000000'
+                : $returnable;
+        }
+
+        return view('purchasing.receipts.show', [
+            'receipt' => $goodsReceipt,
+            'returnedQuantities' => $returnedQuantities,
+            'returnableQuantities' => $returnableQuantities,
+        ]);
     }
 }
