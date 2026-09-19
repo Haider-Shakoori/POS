@@ -33,6 +33,15 @@ class ShiftOpeningService
                     throw new DomainException('The shift opening idempotency key belongs to another user.');
                 }
 
+                $requestedOpeningCash = Decimal::normalize($data['opening_cash'] ?? '0', 2);
+
+                if (
+                    (int) $existing->terminal_id !== (int) $data['terminal_id']
+                    || Decimal::compare($existing->opening_cash, $requestedOpeningCash) !== 0
+                ) {
+                    throw new DomainException('The shift opening idempotency key is already bound to another opening payload.');
+                }
+
                 return $existing->load('terminal');
             }
 
