@@ -7,10 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Purchasing\StoreSupplierRequest;
 use App\Models\Supplier;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Suppliers\SupplierLedgerService;
 use App\Support\Decimal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class SupplierController extends Controller
@@ -39,35 +41,44 @@ class SupplierController extends Controller
         StoreSupplierRequest $request,
         AuditLogger $audit,
         SupplierLedgerService $ledger,
+        BusinessDayService $days,
     ): RedirectResponse {
-        $openingBalance = Decimal::normalize($request->input('opening_balance', '0'), 2);
+        $supplier = DB::transaction(function () use ($request, $audit, $ledger, $days): Supplier {
+            $openingBalance = Decimal::normalize($request->input('opening_balance', '0'), 2);
 
-        $supplier = Supplier::create([
-            ...$request->validated(),
-            'opening_balance' => $openingBalance,
-            'current_balance' => '0.00',
-            'is_active' => true,
-        ]);
+            if (Decimal::isPositive($openingBalance)) {
+                $days->lockOpen(now());
+            }
 
-        if (Decimal::isPositive($openingBalance)) {
-            $ledger->credit(
-                supplier: $supplier,
-                amount: $openingBalance,
-                entryType: 'opening_balance',
-                referenceType: 'supplier',
-                referenceId: $supplier->id,
-                referenceNumber: null,
+            $supplier = Supplier::create([
+                ...$request->validated(),
+                'opening_balance' => $openingBalance,
+                'current_balance' => '0.00',
+                'is_active' => true,
+            ]);
+
+            if (Decimal::isPositive($openingBalance)) {
+                $ledger->credit(
+                    supplier: $supplier,
+                    amount: $openingBalance,
+                    entryType: 'opening_balance',
+                    referenceType: 'supplier',
+                    referenceId: $supplier->id,
+                    referenceNumber: null,
+                    actor: $request->user(),
+                    notes: 'Supplier opening payable balance.',
+                );
+            }
+
+            $audit->record(
+                'purchasing.supplier.created',
+                $supplier,
+                newValues: $supplier->only(['name', 'phone', 'opening_balance']),
                 actor: $request->user(),
-                notes: 'Supplier opening payable balance.',
             );
-        }
 
-        $audit->record(
-            'purchasing.supplier.created',
-            $supplier,
-            newValues: $supplier->only(['name', 'phone', 'opening_balance']),
-            actor: $request->user(),
-        );
+            return $supplier;
+        });
 
         return redirect()
             ->route('purchasing.suppliers.show', $supplier)
