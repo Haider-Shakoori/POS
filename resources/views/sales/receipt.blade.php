@@ -73,14 +73,14 @@
         <div class="rule"></div>
         <table>
             <tr><td>{{ __('ui.subtotal') }}</td><td class="num">{{ \App\Support\Money::format($sale->subtotal) }}</td></tr>
-            @if(\App\Support\Decimal::compare($sale->line_discount_total, '0', 2) > 0)
+            @if(\App\Support\Decimal::compare($sale->line_discount_total, '0') > 0)
                 <tr><td>{{ __('ui.line_discount') }}</td><td class="num">-{{ \App\Support\Money::format($sale->line_discount_total) }}</td></tr>
             @endif
-            @if(\App\Support\Decimal::compare($sale->sale_discount_amount, '0', 2) > 0)
+            @if(\App\Support\Decimal::compare($sale->sale_discount_amount, '0') > 0)
                 <tr><td>{{ __('ui.sale_discount') }}</td><td class="num">-{{ \App\Support\Money::format($sale->sale_discount_amount) }}</td></tr>
             @endif
             <tr class="total"><td>{{ __('ui.net_total') }}</td><td class="num">{{ \App\Support\Money::format($sale->net_total) }}</td></tr>
-            @if(\App\Support\Decimal::compare($sale->returned_total, '0', 2) > 0)
+            @if(\App\Support\Decimal::compare($sale->returned_total, '0') > 0)
                 <tr><td>{{ __('ui.returned_total') }}</td><td class="num">-{{ \App\Support\Money::format($sale->returned_total) }}</td></tr>
             @endif
             <tr><td>{{ __('ui.paid') }}</td><td class="num">{{ \App\Support\Money::format($sale->paid_amount) }}</td></tr>
