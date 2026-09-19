@@ -300,7 +300,7 @@ class SalesCoreTest extends TestCase
 
         $sale->net_total = '1.00';
 
-        $this->expectException(LogicException::class);
+        $this->expectException(\LogicException::class);
         $sale->save();
     }
 
