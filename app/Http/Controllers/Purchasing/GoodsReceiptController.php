@@ -99,7 +99,7 @@ class GoodsReceiptController extends Controller
             'expenses',
             'payments',
             'supplierPaymentAllocations.payment',
-            'purchaseReturns.items.goodsReceiptItem',
+            'purchaseReturns.items.goodsReceiptItem.product',
         ]);
 
         $returnedQuantities = [];
