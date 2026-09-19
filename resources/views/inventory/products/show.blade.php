@@ -43,7 +43,10 @@
                                     <td class="px-5 py-4">
                                         <div class="flex flex-wrap gap-2">
                                             @forelse($product->barcodes->where('product_unit_id', $productUnit->id) as $barcode)
-                                                <span class="rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs dark:bg-slate-800">{{ $barcode->barcode }}@if($barcode->is_primary) ★@endif</span>
+                                                <span class="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">
+                                                    <span class="font-mono">{{ $barcode->barcode }}@if($barcode->is_primary) ★@endif</span>
+                                                    <a class="font-semibold text-brand-600 hover:underline" target="_blank" href="{{ route('inventory.barcodes.labels', ['productBarcode' => $barcode, 'quantity' => 1]) }}">{{ __('ui.print_label') }}</a>
+                                                </span>
                                             @empty
                                                 <span class="text-slate-400">—</span>
                                             @endforelse
