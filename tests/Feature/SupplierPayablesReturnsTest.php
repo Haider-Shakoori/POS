@@ -443,7 +443,9 @@ class SupplierPayablesReturnsTest extends TestCase
         $payload = [
             'idempotency_key' => (string) Str::uuid(),
             'supplier_id' => $this->supplier->id,
-            'received_at' => $receivedAt,
+            'received_at' => Decimal::isPositive($paidAmount)
+                ? now()->toDateTimeString()
+                : $receivedAt,
             'paid_amount' => $paidAmount,
             'items' => [[
                 'product_unit_id' => $productUnitId,
