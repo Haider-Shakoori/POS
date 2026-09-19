@@ -426,4 +426,7 @@ return [
     'post_purchase_return' => 'Post purchase return',
     'supplier_payment_recorded' => 'Supplier payment :number recorded successfully.',
     'purchase_return_posted' => 'Purchase return :number posted successfully.',
+    'transaction' => 'Transaction',
+    'reference' => 'Reference',
+    'amount' => 'Amount',
 ];
