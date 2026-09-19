@@ -6,14 +6,34 @@ use InvalidArgumentException;
 
 final class Money
 {
-    public static function format(int|float|string $amount, bool $withCode = false): string
+    public static function format(int|string $amount, bool $withCode = false): string
     {
-        if (! is_numeric($amount)) {
-            throw new InvalidArgumentException('Money amount must be numeric.');
+        $value = trim((string) $amount);
+
+        if (! preg_match('/^-?\d+(?:\.\d+)?$/', $value)) {
+            throw new InvalidArgumentException('Money amount must be a plain decimal value.');
         }
 
         $precision = (int) config('pos.currency.precision', 2);
-        $formatted = number_format((float) $amount, $precision, '.', ',');
+        $negative = str_starts_with($value, '-');
+        $unsigned = $negative ? substr($value, 1) : $value;
+
+        [$whole, $fraction] = array_pad(explode('.', $unsigned, 2), 2, '');
+
+        if (strlen($fraction) > $precision) {
+            throw new InvalidArgumentException("Money amount exceeds the configured {$precision}-decimal precision.");
+        }
+
+        $whole = ltrim($whole, '0');
+        $whole = $whole === '' ? '0' : $whole;
+        $groupedWhole = preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole);
+
+        $formatted = ($negative ? '-' : '').$groupedWhole;
+
+        if ($precision > 0) {
+            $formatted .= '.'.str_pad($fraction, $precision, '0');
+        }
+
         $symbol = (string) config('pos.currency.symbol', '؋');
 
         return $withCode
