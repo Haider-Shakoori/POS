@@ -145,7 +145,13 @@ class SupplierPayablesReturnsTest extends TestCase
             $this->assertSame('30.00', $openingSupplier->fresh()->current_balance);
             $this->assertSame('0.00', $receipt->fresh()->balance_due);
             $this->assertSame('20.00', $receipt->fresh()->paid_amount);
-            $this->assertSame('20.00', $payment->allocations()->sum('amount'));
+            $allocated = '0.00';
+
+            foreach ($payment->allocations as $allocation) {
+                $allocated = AppSupportDecimal::add($allocated, $allocation->amount, 2);
+            }
+
+            $this->assertSame('20.00', $allocated);
             $this->assertSame('40.00', $payment->amount);
         } finally {
             $this->supplier = $originalSupplier;
