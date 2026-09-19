@@ -9,6 +9,9 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Sales\PosController;
+use App\Http\Controllers\Sales\ProductSearchController;
+use App\Http\Controllers\Sales\SaleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -27,9 +30,17 @@ Route::post('/locale/{locale}', [LocaleController::class, 'update'])
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    Route::view('/pos', 'pos.index')
-        ->middleware('permission:pos.access')
-        ->name('pos.index');
+    Route::prefix('pos')->name('pos.')->middleware('permission:pos.access')->group(function () {
+        Route::get('/', PosController::class)->name('index');
+        Route::get('/products/search', ProductSearchController::class)->name('products.search');
+        Route::post('/sales', [SaleController::class, 'store'])
+            ->middleware('permission:sales.create')
+            ->name('sales.store');
+    });
+
+    Route::get('/sales/{sale}', [SaleController::class, 'show'])
+        ->middleware('permission:sales.view')
+        ->name('sales.show');
 
     Route::prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/products', [ProductController::class, 'index'])

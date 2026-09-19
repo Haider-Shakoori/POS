@@ -17,8 +17,10 @@ use Illuminate\Support\Str;
 
 class InventoryService
 {
-    public function __construct(private readonly AuditLogger $audit)
-    {
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly InventoryCostService $costLayers,
+    ) {
     }
 
     public function addOpeningStock(
@@ -44,6 +46,8 @@ class InventoryService
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->getKey());
 
             if ($existing = $this->existingIdempotentMovement($lockedProduct, $idempotencyKey)) {
+                $this->costLayers->registerInboundMovement($existing);
+
                 return $existing;
             }
 
@@ -66,7 +70,7 @@ class InventoryService
 
             $batch = $this->resolveBatch($lockedProduct, $batchData);
 
-            return $this->applyLockedMovement(
+            $movement = $this->applyLockedMovement(
                 product: $lockedProduct,
                 type: StockMovementType::OpeningStock,
                 baseQuantity: $baseQuantity,
@@ -79,6 +83,10 @@ class InventoryService
                 notes: $notes,
                 idempotencyKey: $idempotencyKey ?: (string) Str::uuid(),
             );
+
+            $this->costLayers->registerInboundMovement($movement);
+
+            return $movement;
         });
     }
 
@@ -109,6 +117,8 @@ class InventoryService
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($productUnit->product_id);
 
             if ($existing = $this->existingIdempotentMovement($lockedProduct, $idempotencyKey)) {
+                $this->costLayers->registerInboundMovement($existing);
+
                 return $existing;
             }
 
@@ -141,11 +151,120 @@ class InventoryService
                 idempotencyKey: $idempotencyKey,
             );
 
+            $this->costLayers->registerInboundMovement($movement);
+
             $lockedProduct->forceFill([
                 'purchase_cost' => Decimal::round($normalizedBaseCost, 2),
             ])->save();
 
             return $movement;
+        });
+    }
+
+    public function deductSaleStock(
+        ProductUnit $productUnit,
+        string $sourceQuantity,
+        ?User $actor,
+        string $referenceType,
+        int $referenceId,
+        ?string $notes = null,
+    ): array {
+        return DB::transaction(function () use (
+            $productUnit,
+            $sourceQuantity,
+            $actor,
+            $referenceType,
+            $referenceId,
+            $notes,
+        ): array {
+            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($productUnit->product_id);
+
+            if (! $lockedProduct->track_stock) {
+                return [];
+            }
+
+            $sourceUnit = ProductUnit::query()
+                ->with('unit')
+                ->whereKey($productUnit->id)
+                ->where('product_id', $lockedProduct->id)
+                ->where('can_sell', true)
+                ->firstOrFail();
+
+            $normalizedSourceQuantity = $this->normalizeSourceQuantity($sourceUnit, $sourceQuantity);
+            $baseQuantity = Decimal::multiply($normalizedSourceQuantity, $sourceUnit->conversion_factor);
+
+            if (! $lockedProduct->track_expiry) {
+                return [[
+                    'movement' => $this->applyLockedMovement(
+                        product: $lockedProduct,
+                        type: StockMovementType::Sale,
+                        baseQuantity: '-'.$baseQuantity,
+                        sourceUnit: $sourceUnit,
+                        sourceQuantity: '-'.$normalizedSourceQuantity,
+                        actor: $actor,
+                        notes: $notes,
+                        referenceType: $referenceType,
+                        referenceId: $referenceId,
+                        idempotencyKey: (string) Str::uuid(),
+                    ),
+                    'batch_id' => null,
+                    'quantity_base' => $baseQuantity,
+                ]];
+            }
+
+            $remaining = $baseQuantity;
+            $allocations = [];
+
+            $batches = ProductBatch::query()
+                ->where('product_id', $lockedProduct->id)
+                ->where('is_blocked', false)
+                ->whereDate('expires_at', '>=', today())
+                ->where('stock_on_hand', '>', 0)
+                ->orderBy('expires_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($batches as $batch) {
+                if (Decimal::compare($remaining, '0') <= 0) {
+                    break;
+                }
+
+                $take = Decimal::compare($batch->stock_on_hand, $remaining) <= 0
+                    ? $batch->stock_on_hand
+                    : $remaining;
+
+                if (! Decimal::isPositive($take)) {
+                    continue;
+                }
+
+                $movement = $this->applyLockedMovement(
+                    product: $lockedProduct,
+                    type: StockMovementType::Sale,
+                    baseQuantity: '-'.$take,
+                    batch: $batch,
+                    sourceUnit: $sourceUnit,
+                    actor: $actor,
+                    notes: $notes,
+                    referenceType: $referenceType,
+                    referenceId: $referenceId,
+                    idempotencyKey: (string) Str::uuid(),
+                );
+
+                $allocations[] = [
+                    'movement' => $movement,
+                    'batch_id' => $batch->id,
+                    'quantity_base' => Decimal::normalize($take),
+                ];
+
+                $remaining = Decimal::subtract($remaining, $take);
+            }
+
+            if (Decimal::isPositive($remaining)) {
+                throw new DomainException('Insufficient non-expired batch stock for this product.');
+            }
+
+            return $allocations;
         });
     }
 
