@@ -10,10 +10,12 @@ use App\Models\PurchaseReturn;
 use App\Models\Role;
 use App\Models\StockMovement;
 use App\Models\Supplier;
+use App\Models\Terminal;
 use App\Models\SupplierLedgerEntry;
 use App\Models\SupplierPayment;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\Cash\ShiftOpeningService;
 use App\Services\Catalog\ProductService;
 use App\Services\Purchasing\GoodsReceiptService;
 use App\Services\Purchasing\PurchaseReturnService;
@@ -42,6 +44,12 @@ class SupplierPayablesReturnsTest extends TestCase
 
         $this->owner = User::factory()->create();
         $this->owner->roles()->attach(Role::query()->where('name', 'owner')->firstOrFail());
+
+        app(ShiftOpeningService::class)->open([
+            'idempotency_key' => (string) Str::uuid(),
+            'terminal_id' => Terminal::query()->where('code', 'COUNTER-1')->firstOrFail()->id,
+            'opening_cash' => '10000.00',
+        ], $this->owner);
 
         $this->supplier = Supplier::create([
             'name' => 'Supplier Ledger Test',
