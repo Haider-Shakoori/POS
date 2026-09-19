@@ -360,10 +360,6 @@ class SaleReturnService
     private function prepareRefunds(array $refunds, string $refundDue): array
     {
         if (! Decimal::isPositive($refundDue)) {
-            if ($refunds !== []) {
-                throw new DomainException('No refund payment is due for this reversal.');
-            }
-
             return [];
         }
 
