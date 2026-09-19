@@ -299,6 +299,17 @@ class InventoryService
                 throw new DomainException('Purchase return stock quantity must be greater than zero.');
             }
 
+            if (Decimal::compare($quantityBase, $receiptItem->product->stock_on_hand) > 0) {
+                throw new DomainException('Purchase return quantity exceeds the available physical product stock.');
+            }
+
+            if (
+                $receiptItem->stockMovement->batch
+                && Decimal::compare($quantityBase, $receiptItem->stockMovement->batch->stock_on_hand) > 0
+            ) {
+                throw new DomainException('Purchase return quantity exceeds the available original batch stock.');
+            }
+
             return $this->recordMovement(
                 product: $receiptItem->product,
                 type: StockMovementType::PurchaseReturn,
