@@ -20,6 +20,7 @@ use App\Services\Purchasing\PurchaseReturnService;
 use App\Services\Sales\CheckoutService;
 use App\Services\Suppliers\SupplierLedgerService;
 use App\Services\Suppliers\SupplierPaymentService;
+use App\Support\Decimal;
 use Database\Seeders\DatabaseSeeder;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -148,7 +149,7 @@ class SupplierPayablesReturnsTest extends TestCase
             $allocated = '0.00';
 
             foreach ($payment->allocations as $allocation) {
-                $allocated = AppSupportDecimal::add($allocated, $allocation->amount, 2);
+                $allocated = Decimal::add($allocated, $allocation->amount, 2);
             }
 
             $this->assertSame('20.00', $allocated);
@@ -450,7 +451,7 @@ class SupplierPayablesReturnsTest extends TestCase
             $payload['expenses'] = $expenses;
         }
 
-        if (\App\Support\Decimal::isPositive($paidAmount)) {
+        if (Decimal::isPositive($paidAmount)) {
             $payload['payment_method'] = 'cash';
         }
 
