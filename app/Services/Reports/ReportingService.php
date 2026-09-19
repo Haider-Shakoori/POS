@@ -472,9 +472,16 @@ class ReportingService
             ->get()
             ->keyBy(fn ($row) => $row->id === null ? 'uncategorized' : (string) $row->id);
 
-        return $sales->keys()->merge($returns->keys())->unique()->map(function ($key) use ($sales, $returns): object {
+        $keys = $sales->keys()->merge($returns->keys())->unique();
+        $categoryFallbacks = Category::query()
+            ->whereIn('id', $keys->filter(fn ($key) => $key !== 'uncategorized'))
+            ->get()
+            ->keyBy(fn (Category $category) => (string) $category->id);
+
+        return $keys->map(function ($key) use ($sales, $returns, $categoryFallbacks): object {
             $sale = $sales->get($key);
             $return = $returns->get($key);
+            $fallback = $key === 'uncategorized' ? null : $categoryFallbacks->get((string) $key);
 
             $netSales = Decimal::subtract(
                 Decimal::normalize((string) ($sale->sold_net_sales ?? 0), 2),
@@ -489,9 +496,9 @@ class ReportingService
 
             return (object) [
                 'id' => $key === 'uncategorized' ? null : (int) $key,
-                'name_en' => $sale->name_en ?? 'Uncategorized',
-                'name_fa' => $sale->name_fa ?? null,
-                'name_ps' => $sale->name_ps ?? null,
+                'name_en' => $sale->name_en ?? $fallback?->name_en ?? 'Uncategorized',
+                'name_fa' => $sale->name_fa ?? $fallback?->name_fa,
+                'name_ps' => $sale->name_ps ?? $fallback?->name_ps,
                 'net_sales' => $netSales,
                 'cogs' => $netCogs,
                 'gross_profit' => Decimal::subtract($netSales, $netCogs, 2),
@@ -619,7 +626,7 @@ class ReportingService
 
     private function inventoryValue(): string
     {
-        $total = '0.00';
+        $total = '0.0000';
 
         foreach (
             InventoryCostLayer::query()
@@ -632,13 +639,13 @@ class ReportingService
                 Decimal::multiplyRounded(
                     $layer->remaining_quantity_base,
                     $layer->unit_cost_base,
-                    2,
+                    4,
                 ),
-                2,
+                4,
             );
         }
 
-        return $total;
+        return Decimal::round($total, 2);
     }
 
     private function range(array $filters): array
