@@ -257,6 +257,43 @@ class SalesCoreTest extends TestCase
         $this->assertSame(1, $first->items()->firstOrFail()->costConsumptions()->count());
     }
 
+    public function test_sale_retry_rejects_a_changed_cart_payload(): void
+    {
+        [$product, $piece] = $this->makeProduct(sku: 'IDEMPOTENT-CONFLICT');
+        $this->receive($piece->id, '10', '10.0000');
+
+        $key = (string) Str::uuid();
+        $service = app(SaleService::class);
+
+        $service->complete([
+            'idempotency_key' => $key,
+            'sale_discount_amount' => '0.00',
+            'items' => [[
+                'product_unit_id' => $piece->id,
+                'quantity' => '2',
+                'line_discount_amount' => '0.00',
+            ]],
+        ], $this->owner);
+
+        try {
+            $service->complete([
+                'idempotency_key' => $key,
+                'sale_discount_amount' => '0.00',
+                'items' => [[
+                    'product_unit_id' => $piece->id,
+                    'quantity' => '1',
+                    'line_discount_amount' => '0.00',
+                ]],
+            ], $this->owner);
+
+            $this->fail('Expected changed cart payload to be rejected for the same idempotency key.');
+        } catch (DomainException) {
+            $this->assertSame(1, Sale::query()->count());
+            $this->assertSame('8.000000', $product->fresh()->stock_on_hand);
+            $this->assertSame(1, StockMovement::query()->where('movement_type', 'sale')->count());
+        }
+    }
+
     public function test_cashier_cannot_apply_discount(): void
     {
         [$product, $piece] = $this->makeProduct(sku: 'NO-DISCOUNT');
