@@ -18,8 +18,8 @@ class CashMovementService
         string $amount,
         string $direction,
         string $movementType,
-        string $sourceType,
-        int $sourceId,
+        ?string $sourceType,
+        ?int $sourceId,
         ?string $referenceNumber = null,
         ?string $reason = null,
         ?CarbonInterface $occurredAt = null,
@@ -123,8 +123,8 @@ class CashMovementService
             amount: $amount,
             direction: $direction,
             movementType: $movementType,
-            sourceType: 'manual_cash',
-            sourceId: $shift->id,
+            sourceType: null,
+            sourceId: null,
             reason: $reason,
             shift: $shift,
             idempotencyKey: $idempotencyKey,
@@ -230,15 +230,15 @@ class CashMovementService
         string $amount,
         string $direction,
         string $movementType,
-        string $sourceType,
-        int $sourceId,
+        ?string $sourceType,
+        ?int $sourceId,
     ): void {
         if (
             Decimal::compare($existing->amount, $amount) !== 0
             || $existing->direction !== $direction
             || $existing->movement_type !== $movementType
             || ($existing->source_type ?? null) !== $sourceType
-            || (int) $existing->source_id !== $sourceId
+            || ($existing->source_id !== null ? (int) $existing->source_id : null) !== $sourceId
         ) {
             throw new DomainException('The cash movement idempotency key is already bound to another payload.');
         }
