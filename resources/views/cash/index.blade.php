@@ -26,6 +26,9 @@
     @error('cash_movement')
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{{ $message }}</div>
     @enderror
+    @error('shift_close')
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{{ $message }}</div>
+    @enderror
 
     @if(!$shift)
         <section class="panel p-5">
@@ -152,6 +155,56 @@
                 </table>
             </div>
         </section>
+
+        @if(auth()->user()->hasPermission('shifts.close'))
+            <section class="panel p-5" x-data="{ actual: '' }">
+                <div class="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                    <div>
+                        <h3 class="font-black">{{ __('ui.close_cashier_shift') }}</h3>
+                        <p class="mt-1 text-xs text-slate-500">{{ __('ui.close_shift_help') }}</p>
+                    </div>
+                    <a class="btn-secondary" href="{{ route('closing.index', ['date' => $shift->business_date?->format('Y-m-d') ?? $shift->opened_at->format('Y-m-d')]) }}">
+                        {{ __('ui.view_daily_closing') }}
+                    </a>
+                </div>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40">
+                        <div class="text-xs font-semibold text-slate-500">{{ __('ui.expected_cash') }}</div>
+                        <div class="mt-1 font-black">{{ AppSupportMoney::format($shift->expected_cash ?? '0.00') }}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40">
+                        <div class="text-xs font-semibold text-slate-500">{{ __('ui.variance_tolerance') }}</div>
+                        <div class="mt-1 font-black">{{ AppSupportMoney::format($cashVarianceTolerance) }}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40">
+                        <div class="text-xs font-semibold text-slate-500">{{ __('ui.variance_preview') }}</div>
+                        <div class="mt-1 font-black" x-text="actual === '' ? '—' : (Number(actual) - {{ (float) ($shift->expected_cash ?? 0) }}).toFixed(2) + ' AFN'"></div>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ route('cash.shifts.close', $shift) }}" class="mt-4 grid gap-4 md:grid-cols-2">
+                    @csrf
+                    <input type="hidden" name="idempotency_key" value="{{ (string) IlluminateSupportStr::uuid() }}">
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.actual_cash_count') }}</label>
+                        <input class="field" name="actual_cash" x-model="actual" value="{{ old('actual_cash') }}" inputmode="decimal" required>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.variance_reason') }}</label>
+                        <input class="field" name="variance_reason" value="{{ old('variance_reason') }}" maxlength="1000">
+                        <p class="mt-1 text-xs text-slate-400">{{ __('ui.variance_reason_help') }}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.closing_notes') }}</label>
+                        <textarea class="field min-h-24" name="closing_notes" maxlength="2000">{{ old('closing_notes') }}</textarea>
+                    </div>
+                    <div class="md:col-span-2 flex justify-end">
+                        <button class="btn-primary" type="submit">{{ __('ui.close_shift') }}</button>
+                    </div>
+                </form>
+            </section>
+        @endif
     @endif
 
     @if(auth()->user()->hasPermission('expenses.create'))
@@ -270,8 +323,11 @@
         </section>
     @endif
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500 dark:border-slate-800 dark:bg-slate-900">
-        {{ __('ui.batch9_closing_notice') }}
-    </div>
+    @if(auth()->user()->hasPermission('business_days.view'))
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+            {{ __('ui.daily_closing_ready_notice') }}
+            <a href="{{ route('closing.index') }}" class="ms-1 font-bold text-brand-600 hover:underline">{{ __('ui.open_daily_closing') }}</a>
+        </div>
+    @endif
 </div>
 @endsection
