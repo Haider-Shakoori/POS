@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::table('cashier_shifts', function (Blueprint $table) {
+            $table->uuid('open_idempotency_key')->nullable()->unique()->after('user_id');
+        });
+
         Schema::create('expense_categories', function (Blueprint $table) {
             $table->id();
             $table->string('code', 60)->unique();
@@ -72,6 +76,11 @@ return new class extends Migration
         Schema::dropIfExists('cash_movements');
         Schema::dropIfExists('operating_entries');
         Schema::dropIfExists('expense_categories');
+
+        Schema::table('cashier_shifts', function (Blueprint $table) {
+            $table->dropUnique(['open_idempotency_key']);
+            $table->dropColumn('open_idempotency_key');
+        });
     }
 
     private function backfillExistingCashEvidence(): void
@@ -83,8 +92,7 @@ return new class extends Migration
 
             $opening = Decimal::normalize((string) $shift->opening_cash, 2);
 
-            if (Decimal::isPositive($opening)) {
-                $events[] = [
+            $events[] = [
                     'key' => 'shift:'.$shift->id.':opening',
                     'movement_type' => 'opening_float',
                     'direction' => 'inflow',
@@ -96,7 +104,6 @@ return new class extends Migration
                     'occurred_at' => $shift->opened_at,
                     'actor_user_id' => $shift->user_id,
                 ];
-            }
 
             $salePayments = DB::table('sale_payments')
                 ->join('payment_methods', 'payment_methods.id', '=', 'sale_payments.payment_method_id')
