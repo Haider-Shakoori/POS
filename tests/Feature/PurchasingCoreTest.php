@@ -8,8 +8,10 @@ use App\Models\Product;
 use App\Models\Role;
 use App\Models\StockMovement;
 use App\Models\Supplier;
+use App\Models\Terminal;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\Cash\ShiftOpeningService;
 use App\Services\Catalog\ProductService;
 use App\Services\Purchasing\GoodsReceiptService;
 use App\Services\Purchasing\PurchaseOrderService;
@@ -35,6 +37,12 @@ class PurchasingCoreTest extends TestCase
 
         $this->owner = User::factory()->create();
         $this->owner->roles()->attach(Role::query()->where('name', 'owner')->firstOrFail());
+
+        app(ShiftOpeningService::class)->open([
+            'idempotency_key' => (string) Str::uuid(),
+            'terminal_id' => Terminal::query()->where('code', 'COUNTER-1')->firstOrFail()->id,
+            'opening_cash' => '10000.00',
+        ], $this->owner);
 
         $this->supplier = Supplier::create([
             'name' => 'Kabul Wholesale Supply',
@@ -81,7 +89,7 @@ class PurchasingCoreTest extends TestCase
             'idempotency_key' => (string) Str::uuid(),
             'supplier_id' => $this->supplier->id,
             'purchase_order_id' => $order->id,
-            'received_at' => '2026-09-19 12:00:00',
+            'received_at' => now()->toDateTimeString(),
             'paid_amount' => '1000.00',
             'payment_method' => 'cash',
             'items' => [[

@@ -4,6 +4,10 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Customers\CustomerCollectionController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\CustomerSearchController;
+use App\Http\Controllers\Cash\CashDrawerController;
+use App\Http\Controllers\Cash\ManualCashMovementController;
+use App\Http\Controllers\Cash\OperatingEntryController;
+use App\Http\Controllers\Cash\ShiftOpeningController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
@@ -59,6 +63,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/held-sales/{heldSale}/release', [HeldSaleController::class, 'release'])
             ->middleware('permission:sales.hold')
             ->name('held.release');
+    });
+
+    Route::prefix('cash')->name('cash.')->group(function () {
+        Route::get('/', CashDrawerController::class)
+            ->middleware('permission:cash.view')
+            ->name('index');
+        Route::post('/shifts', [ShiftOpeningController::class, 'store'])
+            ->middleware('permission:shifts.open')
+            ->name('shifts.store');
+        Route::post('/operating-entries', [OperatingEntryController::class, 'store'])
+            ->middleware('permission:expenses.create')
+            ->name('operating-entries.store');
+        Route::post('/shifts/{cashierShift}/movements', [ManualCashMovementController::class, 'store'])
+            ->middleware('permission:cash.manage')
+            ->name('movements.store');
     });
 
     Route::get('/sales', [SaleController::class, 'index'])

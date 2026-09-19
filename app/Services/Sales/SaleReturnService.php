@@ -12,6 +12,7 @@ use App\Models\SaleReturn;
 use App\Models\SaleReturnItem;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Cash\CashMovementService;
 use App\Services\Customers\CustomerLedgerService;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryCostService;
@@ -28,6 +29,7 @@ class SaleReturnService
         private readonly InventoryService $inventory,
         private readonly InventoryCostService $costing,
         private readonly CustomerLedgerService $ledger,
+        private readonly CashMovementService $cash,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -197,7 +199,7 @@ class SaleReturnService
             }
 
             foreach ($preparedRefunds as $index => $refund) {
-                SaleRefund::create([
+                $saleRefund = SaleRefund::create([
                     'idempotency_key' => $return->idempotency_key.':refund:'.$index,
                     'sale_return_id' => $return->id,
                     'payment_method_id' => $refund['method']->id,
@@ -207,6 +209,20 @@ class SaleReturnService
                     'refunded_at' => now(),
                     'notes' => $refund['notes'],
                 ]);
+
+                if ($refund['method']->is_cash) {
+                    $this->cash->recordSource(
+                        actor: $actor,
+                        amount: $saleRefund->amount,
+                        direction: 'outflow',
+                        movementType: 'sale_refund',
+                        sourceType: 'sale_refund',
+                        sourceId: $saleRefund->id,
+                        referenceNumber: $return->number,
+                        reason: ucfirst($type).' cash refund for '.$lockedSale->number,
+                        occurredAt: $saleRefund->refunded_at,
+                    );
+                }
             }
 
             $newReturnedTotal = Decimal::add($lockedSale->returned_total, $returnTotal, 2);

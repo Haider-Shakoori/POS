@@ -3,12 +3,14 @@
 namespace App\Services\Sales;
 
 use App\Enums\SalePaymentStatus;
+use App\Models\CashierShift;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Cash\CashMovementService;
 use App\Services\Customers\CustomerLedgerService;
 use App\Support\Decimal;
 use DomainException;
@@ -18,6 +20,7 @@ class PaymentSettlementService
 {
     public function __construct(
         private readonly CustomerLedgerService $ledger,
+        private readonly CashMovementService $cash,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -120,6 +123,23 @@ class PaymentSettlementService
                         'notes' => $payment['notes'],
                     ],
                 );
+
+                if ($payment['method']->is_cash) {
+                    $this->cash->recordSource(
+                        actor: $actor,
+                        amount: $salePayment->applied_amount,
+                        direction: 'inflow',
+                        movementType: 'cash_sale',
+                        sourceType: 'sale_payment',
+                        sourceId: $salePayment->id,
+                        referenceNumber: $lockedSale->number,
+                        reason: 'Cash sale payment',
+                        occurredAt: $salePayment->paid_at,
+                        shift: $lockedSale->cashier_shift_id
+                            ? CashierShift::query()->find($lockedSale->cashier_shift_id)
+                            : null,
+                    );
+                }
 
                 if ($lockedCustomer) {
                     $this->ledger->credit(
