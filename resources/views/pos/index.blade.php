@@ -9,11 +9,11 @@
         searchUrl: @js(route('pos.products.search')),
         saleUrl: @js(route('pos.sales.store')),
         customerSearchUrl: @js(route('customers.search')),
-        customerStoreUrl: @js(route('customers.store')),
+        customerStoreUrl: @js(route('pos.customers.store')),
         csrf: @js(csrf_token()),
         canDiscount: @js($canDiscount),
         canCredit: @js($canCredit),
-        canManageCustomers: @js($canManageCustomers),
+        canQuickCreateCustomers: @js($canQuickCreateCustomers),
         paymentMethods: @js($paymentMethods),
         currency: '؋',
         labels: {
@@ -198,7 +198,7 @@
                         <div x-show="!selectedCustomer" class="mt-2">
                             <div class="flex gap-2">
                                 <input class="field" x-model="customerQuery" @input.debounce.250ms="searchCustomers()" placeholder="{{ __('ui.search_customer_pos') }}">
-                                <button x-show="canManageCustomers" class="btn-secondary shrink-0" type="button" @click="customerCreateOpen=!customerCreateOpen">＋</button>
+                                <button x-show="canQuickCreateCustomers" class="btn-secondary shrink-0" type="button" @click="customerCreateOpen=!customerCreateOpen">＋</button>
                             </div>
 
                             <div x-show="customerResults.length" class="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
@@ -214,7 +214,7 @@
                             </div>
                         </div>
 
-                        <div x-show="customerCreateOpen && canManageCustomers" class="mt-3 grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700 sm:grid-cols-3">
+                        <div x-show="customerCreateOpen && canQuickCreateCustomers" class="mt-3 grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700 sm:grid-cols-3">
                             <input class="field" x-model="newCustomer.name" placeholder="{{ __('ui.customer_name') }}">
                             <input class="field" x-model="newCustomer.phone" placeholder="{{ __('ui.phone') }}">
                             <input class="field" x-model="newCustomer.credit_limit" inputmode="decimal" placeholder="{{ __('ui.credit_limit') }}">
@@ -311,7 +311,7 @@ function posWorkspace(config) {
         saleKey: null,
         canDiscount: config.canDiscount,
         canCredit: config.canCredit,
-        canManageCustomers: config.canManageCustomers,
+        canQuickCreateCustomers: config.canQuickCreateCustomers,
         paymentMethods: config.paymentMethods || [],
         paymentOpen: false,
         payments: [],
@@ -576,7 +576,7 @@ function posWorkspace(config) {
         },
 
         async createCustomer() {
-            if (!this.canManageCustomers || !this.newCustomer.name.trim() || this.customerCreating) return;
+            if (!this.canQuickCreateCustomers || !this.newCustomer.name.trim() || this.customerCreating) return;
 
             this.customerCreating = true;
             this.message = '';
