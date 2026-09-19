@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Inventory;
 
+use App\Models\Unit;
 use App\Support\Decimal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -88,8 +89,32 @@ class StoreProductRequest extends FormRequest
             $minimumPrice = $this->input('minimum_selling_price');
             $sellingPrice = $this->input('selling_price');
 
-            if ($minimumPrice !== null && $sellingPrice !== null && Decimal::compare($minimumPrice, $sellingPrice) > 0) {
+            if (
+                $minimumPrice !== null
+                && $sellingPrice !== null
+                && ! $validator->errors()->has('minimum_selling_price')
+                && ! $validator->errors()->has('selling_price')
+                && Decimal::compare($minimumPrice, $sellingPrice) > 0
+            ) {
                 $validator->errors()->add('minimum_selling_price', __('ui.minimum_price_not_above_sale'));
+            }
+
+            if (! $validator->errors()->has('base_unit_id')) {
+                $baseUnit = Unit::query()->find($baseUnitId);
+
+                if ($baseUnit) {
+                    foreach (['minimum_stock', 'reorder_quantity'] as $field) {
+                        if (
+                            $this->filled($field)
+                            && ! $validator->errors()->has($field)
+                            && Decimal::fractionalDigits($this->input($field)) > $baseUnit->decimal_places
+                        ) {
+                            $validator->errors()->add($field, __('ui.quantity_precision_invalid', [
+                                'places' => $baseUnit->decimal_places,
+                            ]));
+                        }
+                    }
+                }
             }
         });
     }

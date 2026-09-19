@@ -48,16 +48,26 @@ class StoreOpeningStockRequest extends FormRequest
                 $validator->errors()->add('expires_at', __('ui.expiry_date_required'));
             }
 
-            if ($product && ! $product->productUnits()->where('unit_id', $this->integer('unit_id'))->exists()) {
+            if (
+                $product
+                && ! $validator->errors()->has('unit_id')
+                && ! $product->productUnits()->where('unit_id', $this->integer('unit_id'))->exists()
+            ) {
                 $validator->errors()->add('unit_id', __('ui.unit_not_configured_for_product'));
             }
 
-            $unit = Unit::query()->find($this->integer('unit_id'));
+            if (
+                ! $validator->errors()->has('quantity')
+                && ! $validator->errors()->has('unit_id')
+                && $this->filled('quantity')
+            ) {
+                $unit = Unit::query()->find($this->integer('unit_id'));
 
-            if ($unit && $this->filled('quantity') && Decimal::fractionalDigits($this->input('quantity')) > $unit->decimal_places) {
-                $validator->errors()->add('quantity', __('ui.quantity_precision_invalid', [
-                    'places' => $unit->decimal_places,
-                ]));
+                if ($unit && Decimal::fractionalDigits($this->input('quantity')) > $unit->decimal_places) {
+                    $validator->errors()->add('quantity', __('ui.quantity_precision_invalid', [
+                        'places' => $unit->decimal_places,
+                    ]));
+                }
             }
         });
     }

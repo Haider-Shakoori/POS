@@ -132,6 +132,43 @@ class InventoryCoreTest extends TestCase
         $this->assertSame('10.000000', $batch->stock_on_hand);
     }
 
+    public function test_invalid_price_input_returns_validation_errors_instead_of_throwing(): void
+    {
+        $piece = Unit::query()->where('code', 'PCS')->firstOrFail();
+
+        $this->actingAs($this->owner)
+            ->from(route('inventory.products.create'))
+            ->post(route('inventory.products.store'), [
+                'sku' => 'INVALID-PRICE',
+                'name_en' => 'Invalid Price Product',
+                'base_unit_id' => $piece->id,
+                'selling_price' => 'not-a-number',
+                'minimum_selling_price' => '5.00',
+                'track_stock' => '1',
+            ])
+            ->assertRedirect(route('inventory.products.create'))
+            ->assertSessionHasErrors(['selling_price']);
+
+        $this->assertDatabaseMissing('products', ['sku' => 'INVALID-PRICE']);
+    }
+
+    public function test_whole_piece_unit_rejects_fractional_opening_stock(): void
+    {
+        $product = $this->makeProduct();
+        $piece = Unit::query()->where('code', 'PCS')->firstOrFail();
+
+        $this->actingAs($this->owner)
+            ->post(route('inventory.products.opening-stock.store', $product), [
+                'quantity' => '1.5',
+                'unit_id' => $piece->id,
+                'idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertSessionHasErrors(['quantity']);
+
+        $this->assertSame('0.000000', $product->fresh()->stock_on_hand);
+        $this->assertSame(0, $product->stockMovements()->count());
+    }
+
     public function test_negative_stock_is_blocked_when_policy_is_disabled(): void
     {
         $product = $this->makeProduct();
