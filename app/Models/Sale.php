@@ -29,6 +29,9 @@ class Sale extends Model
         'gross_profit',
         'paid_amount',
         'balance_due',
+        'returned_total',
+        'receivable_reversed_total',
+        'refunded_total',
         'settlement_finalized_at',
         'sold_at',
         'notes',
@@ -47,6 +50,9 @@ class Sale extends Model
             'gross_profit' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'balance_due' => 'decimal:2',
+            'returned_total' => 'decimal:2',
+            'receivable_reversed_total' => 'decimal:2',
+            'refunded_total' => 'decimal:2',
             'settlement_finalized_at' => 'datetime',
             'sold_at' => 'datetime',
         ];
@@ -56,9 +62,13 @@ class Sale extends Model
     {
         static::updating(function (Sale $sale): void {
             $allowed = [
+                'status',
                 'payment_status',
                 'paid_amount',
                 'balance_due',
+                'returned_total',
+                'receivable_reversed_total',
+                'refunded_total',
                 'settlement_finalized_at',
                 'updated_at',
             ];
@@ -103,5 +113,10 @@ class Sale extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SalePayment::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class);
     }
 }

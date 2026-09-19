@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Customers\CustomerCollectionController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\CustomerSearchController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\ProductController;
@@ -12,9 +12,11 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Sales\HeldSaleController;
 use App\Http\Controllers\Sales\PosController;
 use App\Http\Controllers\Sales\ProductSearchController;
 use App\Http\Controllers\Sales\SaleController;
+use App\Http\Controllers\Sales\SaleReturnController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -42,11 +44,33 @@ Route::middleware('auth')->group(function () {
         Route::post('/customers', [CustomerController::class, 'store'])
             ->middleware('permission:customers.quick_create')
             ->name('customers.store');
+
+        Route::get('/held-sales', [HeldSaleController::class, 'index'])
+            ->middleware('permission:sales.hold')
+            ->name('held.index');
+        Route::post('/held-sales', [HeldSaleController::class, 'store'])
+            ->middleware('permission:sales.hold')
+            ->name('held.store');
+        Route::post('/held-sales/{heldSale}/resume', [HeldSaleController::class, 'resume'])
+            ->middleware('permission:sales.hold')
+            ->name('held.resume');
+        Route::post('/held-sales/{heldSale}/release', [HeldSaleController::class, 'release'])
+            ->middleware('permission:sales.hold')
+            ->name('held.release');
     });
 
+    Route::get('/sales', [SaleController::class, 'index'])
+        ->middleware('permission:sales.view')
+        ->name('sales.index');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])
         ->middleware('permission:sales.view')
         ->name('sales.show');
+    Route::post('/sales/{sale}/returns', [SaleReturnController::class, 'store'])
+        ->middleware('permission:sales.return')
+        ->name('sales.returns.store');
+    Route::post('/sales/{sale}/void', [SaleReturnController::class, 'void'])
+        ->middleware('permission:sales.void')
+        ->name('sales.void');
 
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', [CustomerController::class, 'index'])

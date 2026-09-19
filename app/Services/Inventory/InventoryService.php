@@ -6,6 +6,9 @@ use App\Enums\StockMovementType;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\ProductUnit;
+use App\Models\SaleReturnStockAllocation;
+use App\Models\SaleReturnItem;
+use App\Models\SaleItem;
 use App\Models\ShopSetting;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -265,6 +268,81 @@ class InventoryService
             }
 
             return $allocations;
+        });
+    }
+
+    public function restoreSaleReturnStock(
+        SaleReturnItem $returnItem,
+        SaleItem $saleItem,
+        string $quantityBase,
+        ?User $actor,
+        ?string $notes = null,
+    ): array {
+        return DB::transaction(function () use ($returnItem, $saleItem, $quantityBase, $actor, $notes): array {
+            $remaining = Decimal::normalize($quantityBase);
+
+            if (! Decimal::isPositive($remaining)) {
+                throw new DomainException('Return stock quantity must be greater than zero.');
+            }
+
+            $allocations = $saleItem->stockAllocations()
+                ->with('batch')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($allocations->isEmpty()) {
+                return [];
+            }
+
+            $restored = [];
+
+            foreach ($allocations as $allocation) {
+                if (! Decimal::isPositive($remaining)) {
+                    break;
+                }
+
+                $alreadyRestored = SaleReturnStockAllocation::query()
+                    ->where('original_sale_stock_allocation_id', $allocation->id)
+                    ->sum('quantity_base');
+                $alreadyRestored = Decimal::normalize((string) $alreadyRestored);
+
+                $available = Decimal::subtract($allocation->quantity_base, $alreadyRestored);
+
+                if (! Decimal::isPositive($available)) {
+                    continue;
+                }
+
+                $take = Decimal::compare($available, $remaining) <= 0 ? $available : $remaining;
+                $movement = $this->recordMovement(
+                    product: $saleItem->product,
+                    type: StockMovementType::SaleReturn,
+                    baseQuantity: $take,
+                    batch: $allocation->batch,
+                    actor: $actor,
+                    notes: $notes,
+                    referenceType: SaleReturnItem::class,
+                    referenceId: $returnItem->id,
+                    idempotencyKey: 'sale-return:'.$returnItem->id.':stock:'.$allocation->id,
+                );
+
+                $record = SaleReturnStockAllocation::create([
+                    'sale_return_item_id' => $returnItem->id,
+                    'original_sale_stock_allocation_id' => $allocation->id,
+                    'product_batch_id' => $allocation->product_batch_id,
+                    'stock_movement_id' => $movement->id,
+                    'quantity_base' => $take,
+                ]);
+
+                $restored[] = $record;
+                $remaining = Decimal::subtract($remaining, $take);
+            }
+
+            if (Decimal::isPositive($remaining)) {
+                throw new DomainException('Return stock restoration exceeds the sale item stock history.');
+            }
+
+            return $restored;
         });
     }
 
