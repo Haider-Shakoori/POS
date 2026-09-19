@@ -20,7 +20,7 @@ class CustomerService
     public function create(array $data, User $actor): Customer
     {
         return DB::transaction(function () use ($data, $actor): Customer {
-            if (! $actor->hasPermission('customers.manage')) {
+            if (! $actor->hasPermission('customers.manage') && ! $actor->hasPermission('customers.quick_create')) {
                 throw new DomainException('The user is not allowed to create customers.');
             }
 
