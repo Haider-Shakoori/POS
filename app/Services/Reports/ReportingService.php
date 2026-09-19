@@ -601,12 +601,14 @@ class ReportingService
 
     private function peakHours(CarbonImmutable $from, CarbonImmutable $to): Collection
     {
+        $hourExpression = $this->hourBucketExpression();
+
         return DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
-            ->selectRaw('HOUR(sold_at) as hour')
+            ->selectRaw($hourExpression.' as hour')
             ->selectRaw('COUNT(*) as sales_count')
             ->selectRaw('SUM(net_total) as net_total')
-            ->groupByRaw('HOUR(sold_at)')
+            ->groupByRaw($hourExpression)
             ->orderByDesc('sales_count')
             ->limit(24)
             ->get();
@@ -614,14 +616,31 @@ class ReportingService
 
     private function weekdayPerformance(CarbonImmutable $from, CarbonImmutable $to): Collection
     {
+        $weekdayExpression = $this->weekdayBucketExpression();
+
         return DB::table('sales')
             ->whereBetween('sold_at', [$from->startOfDay(), $to->endOfDay()])
-            ->selectRaw('WEEKDAY(sold_at) as weekday_index')
+            ->selectRaw($weekdayExpression.' as weekday_index')
             ->selectRaw('COUNT(*) as sales_count')
             ->selectRaw('SUM(net_total) as net_total')
-            ->groupByRaw('WEEKDAY(sold_at)')
+            ->groupByRaw($weekdayExpression)
             ->orderBy('weekday_index')
             ->get();
+    }
+
+    private function hourBucketExpression(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%H', sold_at) AS INTEGER)"
+            : 'HOUR(sold_at)';
+    }
+
+    private function weekdayBucketExpression(): string
+    {
+        // Normalize to Monday=0 ... Sunday=6 on both MySQL and SQLite.
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "((CAST(strftime('%w', sold_at) AS INTEGER) + 6) % 7)"
+            : 'WEEKDAY(sold_at)';
     }
 
     private function inventoryValue(): string
