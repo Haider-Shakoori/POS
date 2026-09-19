@@ -7,6 +7,7 @@ use App\Models\CashierShift;
 use App\Models\Terminal;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Support\Decimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class ShiftOpeningService
 {
     public function __construct(
         private readonly CashMovementService $cash,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -26,6 +28,9 @@ class ShiftOpeningService
         }
 
         return DB::transaction(function () use ($data, $actor): CashierShift {
+            $businessDate = now()->format('Y-m-d');
+            $this->days->lockOpen($businessDate);
+
             User::query()->lockForUpdate()->findOrFail($actor->id);
 
             if ($existing = CashierShift::query()
@@ -86,6 +91,7 @@ class ShiftOpeningService
             $shift = CashierShift::create([
                 'terminal_id' => $terminal->id,
                 'user_id' => $actor->id,
+                'business_date' => $businessDate,
                 'open_idempotency_key' => $data['idempotency_key'],
                 'opened_at' => now(),
                 'opening_cash' => $openingCash,

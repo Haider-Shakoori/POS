@@ -12,8 +12,10 @@ use App\Models\SalePayment;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cash\CashMovementService;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Documents\DocumentNumberService;
 use App\Support\Decimal;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -23,6 +25,7 @@ class CustomerCollectionService
         private readonly DocumentNumberService $numbers,
         private readonly CustomerLedgerService $ledger,
         private readonly CashMovementService $cash,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -50,6 +53,12 @@ class CustomerCollectionService
 
                 return $existing->load(['paymentMethod', 'allocations.sale']);
             }
+
+            $collectedAt = ! empty($data['collected_at'])
+                ? CarbonImmutable::parse($data['collected_at'])
+                : now();
+
+            $this->days->lockOpen($collectedAt);
 
             $lockedCustomer = Customer::query()->lockForUpdate()->findOrFail($customer->id);
 
@@ -105,7 +114,7 @@ class CustomerCollectionService
                 'tendered_amount' => $tendered,
                 'change_amount' => $change,
                 'reference' => $data['reference'] ?? null,
-                'collected_at' => $data['collected_at'] ?? now(),
+                'collected_at' => $collectedAt,
                 'notes' => $data['notes'] ?? null,
             ]);
 

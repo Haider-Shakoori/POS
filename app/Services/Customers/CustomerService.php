@@ -5,6 +5,7 @@ namespace App\Services\Customers;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Support\Decimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,7 @@ class CustomerService
 {
     public function __construct(
         private readonly CustomerLedgerService $ledger,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -29,6 +31,10 @@ class CustomerService
 
             if (Decimal::isNegative($creditLimit) || Decimal::isNegative($openingBalance)) {
                 throw new DomainException('Customer credit amounts cannot be negative.');
+            }
+
+            if (Decimal::isPositive($openingBalance)) {
+                $this->days->lockOpen(now());
             }
 
             $customer = Customer::create([

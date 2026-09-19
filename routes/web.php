@@ -8,6 +8,8 @@ use App\Http\Controllers\Cash\CashDrawerController;
 use App\Http\Controllers\Cash\ManualCashMovementController;
 use App\Http\Controllers\Cash\OperatingEntryController;
 use App\Http\Controllers\Cash\ShiftOpeningController;
+use App\Http\Controllers\Closing\BusinessDayClosingController;
+use App\Http\Controllers\Closing\ShiftClosingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
@@ -78,6 +80,26 @@ Route::middleware('auth')->group(function () {
         Route::post('/shifts/{cashierShift}/movements', [ManualCashMovementController::class, 'store'])
             ->middleware('permission:cash.manage')
             ->name('movements.store');
+        Route::post('/shifts/{cashierShift}/close', [ShiftClosingController::class, 'close'])
+            ->middleware('permission:shifts.close')
+            ->name('shifts.close');
+        Route::post('/shifts/{cashierShift}/reopen', [ShiftClosingController::class, 'reopen'])
+            ->middleware('permission:shifts.reopen')
+            ->name('shifts.reopen');
+    });
+
+    Route::prefix('closing')->name('closing.')->group(function () {
+        Route::get('/', [BusinessDayClosingController::class, 'index'])
+            ->middleware('permission:business_days.view')
+            ->name('index');
+        Route::post('/{date}', [BusinessDayClosingController::class, 'close'])
+            ->where('date', '\\d{4}-\\d{2}-\\d{2}')
+            ->middleware('permission:business_days.close')
+            ->name('close');
+        Route::post('/{date}/reopen', [BusinessDayClosingController::class, 'reopen'])
+            ->where('date', '\\d{4}-\\d{2}-\\d{2}')
+            ->middleware('permission:business_days.reopen')
+            ->name('reopen');
     });
 
     Route::get('/sales', [SaleController::class, 'index'])

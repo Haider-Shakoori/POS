@@ -16,6 +16,7 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cash\CashMovementService;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryService;
 use App\Services\Suppliers\SupplierLedgerService;
@@ -33,6 +34,7 @@ class GoodsReceiptService
         private readonly InventoryService $inventory,
         private readonly SupplierLedgerService $supplierLedger,
         private readonly CashMovementService $cash,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -58,6 +60,12 @@ class GoodsReceiptService
 
                 return $existing->load(['supplier', 'purchaseOrder', 'items.product', 'expenses', 'payments']);
             }
+
+            $receivedAt = ! empty($data['received_at'])
+                ? CarbonImmutable::parse($data['received_at'])
+                : now();
+
+            $this->days->lockOpen($receivedAt);
 
             if (! Supplier::query()->whereKey($data['supplier_id'])->where('is_active', true)->exists()) {
                 throw new DomainException('The selected supplier is not active.');
@@ -159,7 +167,7 @@ class GoodsReceiptService
                 'status' => GoodsReceiptStatus::Posted,
                 'idempotency_key' => $data['idempotency_key'],
                 'supplier_invoice_reference' => $data['supplier_invoice_reference'] ?? null,
-                'received_at' => $data['received_at'] ?? now(),
+                'received_at' => $receivedAt,
                 'subtotal' => $subtotal,
                 'line_discount_total' => $lineDiscountTotal,
                 'receipt_discount_amount' => $receiptDiscount,
@@ -249,7 +257,7 @@ class GoodsReceiptService
                     'amount' => $paidAmount,
                     'method' => $data['payment_method'],
                     'reference' => $data['payment_reference'] ?? null,
-                    'paid_at' => $data['received_at'] ?? now(),
+                    'paid_at' => $receivedAt,
                     'notes' => $data['payment_notes'] ?? null,
                 ]);
             }

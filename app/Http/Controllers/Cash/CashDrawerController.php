@@ -8,6 +8,7 @@ use App\Models\CashierShift;
 use App\Models\ExpenseCategory;
 use App\Models\OperatingEntry;
 use App\Models\PaymentMethod;
+use App\Models\ShopSetting;
 use App\Models\Terminal;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -53,6 +54,7 @@ class CashDrawerController extends Controller
                 ->where('is_active', true)
                 ->orderBy('sort_order')
                 ->get(),
+            'cashVarianceTolerance' => ShopSetting::query()->value('cash_variance_tolerance') ?? '0.00',
             'recentEntries' => OperatingEntry::query()
                 ->with(['category', 'paymentMethod'])
                 ->latest('occurred_at')

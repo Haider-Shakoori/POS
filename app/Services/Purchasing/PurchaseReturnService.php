@@ -9,6 +9,7 @@ use App\Models\PurchaseReturnItem;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryCostService;
 use App\Services\Inventory\InventoryService;
@@ -25,6 +26,7 @@ class PurchaseReturnService
         private readonly InventoryService $inventory,
         private readonly InventoryCostService $costing,
         private readonly SupplierLedgerService $ledger,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -48,6 +50,8 @@ class PurchaseReturnService
 
                 return $existing;
             }
+
+            $this->days->lockOpen(now());
 
             $lockedReceipt = GoodsReceipt::query()
                 ->with([

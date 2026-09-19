@@ -6,6 +6,7 @@ use App\Enums\ShiftStatus;
 use App\Models\CashierShift;
 use App\Models\CashMovement;
 use App\Models\User;
+use App\Services\Closing\BusinessDayService;
 use App\Support\Decimal;
 use Carbon\CarbonInterface;
 use DomainException;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class CashMovementService
 {
+    public function __construct(
+        private readonly BusinessDayService $days,
+    ) {
+    }
     public function recordSource(
         User $actor,
         string $amount,
@@ -64,7 +69,22 @@ class CashMovementService
                 return $existing;
             }
 
-            $lockedShift = $this->resolveOpenShift($actor, $shift);
+            $candidateShift = $shift ?: CashierShift::query()
+                ->where('user_id', $actor->id)
+                ->where('status', ShiftStatus::Open->value)
+                ->latest('opened_at')
+                ->first();
+
+            if (! $candidateShift) {
+                throw new DomainException('Open a cashier shift before recording a cash transaction.');
+            }
+
+            $businessDate = $candidateShift->business_date?->format('Y-m-d')
+                ?? $candidateShift->opened_at->format('Y-m-d');
+
+            $this->days->lockOpen($businessDate);
+
+            $lockedShift = $this->resolveOpenShift($actor, $candidateShift);
             $movementTime = $occurredAt ?? now();
 
             if ($movementTime->lt($lockedShift->opened_at)) {
@@ -202,30 +222,20 @@ class CashMovementService
 
     private function resolveOpenShift(User $actor, ?CashierShift $shift): CashierShift
     {
-        $query = CashierShift::query()->lockForUpdate();
-
-        if ($shift) {
-            $locked = $query->findOrFail($shift->id);
-
-            if ($locked->status !== ShiftStatus::Open) {
-                throw new DomainException('Cash movement requires an open cashier shift.');
-            }
-
-            if ((int) $locked->user_id !== (int) $actor->id && ! $actor->hasPermission('cash.manage')) {
-                throw new DomainException('The selected cash drawer belongs to another user.');
-            }
-
-            return $locked;
+        if (! $shift) {
+            throw new DomainException('Open a cashier shift before recording a cash transaction.');
         }
 
-        $locked = $query
-            ->where('user_id', $actor->id)
-            ->where('status', ShiftStatus::Open->value)
-            ->latest('opened_at')
-            ->first();
+        $locked = CashierShift::query()
+            ->lockForUpdate()
+            ->findOrFail($shift->id);
 
-        if (! $locked) {
-            throw new DomainException('Open a cashier shift before recording a cash transaction.');
+        if ($locked->status !== ShiftStatus::Open) {
+            throw new DomainException('Cash movement requires an open cashier shift.');
+        }
+
+        if ((int) $locked->user_id !== (int) $actor->id && ! $actor->hasPermission('cash.manage')) {
+            throw new DomainException('The selected cash drawer belongs to another user.');
         }
 
         return $locked;

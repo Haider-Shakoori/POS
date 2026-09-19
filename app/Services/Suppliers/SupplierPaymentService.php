@@ -9,6 +9,7 @@ use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cash\CashMovementService;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Documents\DocumentNumberService;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
@@ -21,6 +22,7 @@ class SupplierPaymentService
         private readonly DocumentNumberService $numbers,
         private readonly SupplierLedgerService $ledger,
         private readonly CashMovementService $cash,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -74,6 +76,8 @@ class SupplierPaymentService
             $paidAt = ! empty($data['paid_at'])
                 ? CarbonImmutable::parse($data['paid_at'])
                 : now();
+
+            $this->days->lockOpen($paidAt);
 
             $payment = SupplierPayment::create([
                 'number' => $this->numbers->next('supplier_payment', 'SPY'),
