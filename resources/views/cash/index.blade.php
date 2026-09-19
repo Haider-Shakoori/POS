@@ -171,11 +171,11 @@
                 <div class="mt-4 grid gap-3 sm:grid-cols-3">
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40">
                         <div class="text-xs font-semibold text-slate-500">{{ __('ui.expected_cash') }}</div>
-                        <div class="mt-1 font-black">{{ AppSupportMoney::format($shift->expected_cash ?? '0.00') }}</div>
+                        <div class="mt-1 font-black">{{ \App\Support\Money::format($shift->expected_cash ?? '0.00') }}</div>
                     </div>
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40">
                         <div class="text-xs font-semibold text-slate-500">{{ __('ui.variance_tolerance') }}</div>
-                        <div class="mt-1 font-black">{{ AppSupportMoney::format($cashVarianceTolerance) }}</div>
+                        <div class="mt-1 font-black">{{ \App\Support\Money::format($cashVarianceTolerance) }}</div>
                     </div>
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/40">
                         <div class="text-xs font-semibold text-slate-500">{{ __('ui.variance_preview') }}</div>
@@ -185,7 +185,7 @@
 
                 <form method="POST" action="{{ route('cash.shifts.close', $shift) }}" class="mt-4 grid gap-4 md:grid-cols-2">
                     @csrf
-                    <input type="hidden" name="idempotency_key" value="{{ (string) IlluminateSupportStr::uuid() }}">
+                    <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.actual_cash_count') }}</label>
                         <input class="field" name="actual_cash" x-model="actual" value="{{ old('actual_cash') }}" inputmode="decimal" required>
