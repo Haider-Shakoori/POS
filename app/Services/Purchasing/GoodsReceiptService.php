@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryService;
+use App\Services\Suppliers\SupplierLedgerService;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -29,6 +30,7 @@ class GoodsReceiptService
         private readonly DocumentNumberService $numbers,
         private readonly ProportionalAllocator $allocator,
         private readonly InventoryService $inventory,
+        private readonly SupplierLedgerService $supplierLedger,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -235,8 +237,10 @@ class GoodsReceiptService
                 }
             }
 
+            $initialPayment = null;
+
             if (Decimal::isPositive($paidAmount)) {
-                PurchasePayment::create([
+                $initialPayment = PurchasePayment::create([
                     'goods_receipt_id' => $receipt->id,
                     'supplier_id' => $receipt->supplier_id,
                     'recorded_by_user_id' => $actor->id,
@@ -246,6 +250,36 @@ class GoodsReceiptService
                     'paid_at' => $data['received_at'] ?? now(),
                     'notes' => $data['payment_notes'] ?? null,
                 ]);
+            }
+
+            $supplier = Supplier::query()->findOrFail($receipt->supplier_id);
+
+            if (Decimal::isPositive($receipt->net_total)) {
+                $this->supplierLedger->credit(
+                    supplier: $supplier,
+                    amount: $receipt->net_total,
+                    entryType: 'goods_receipt',
+                    referenceType: 'goods_receipt',
+                    referenceId: $receipt->id,
+                    referenceNumber: $receipt->number,
+                    actor: $actor,
+                    notes: 'Posted goods receipt '.$receipt->number,
+                    occurredAt: $receipt->received_at,
+                );
+            }
+
+            if ($initialPayment) {
+                $this->supplierLedger->debit(
+                    supplier: $supplier,
+                    amount: $initialPayment->amount,
+                    entryType: 'initial_purchase_payment',
+                    referenceType: 'purchase_payment',
+                    referenceId: $initialPayment->id,
+                    referenceNumber: null,
+                    actor: $actor,
+                    notes: $initialPayment->notes,
+                    occurredAt: $initialPayment->paid_at,
+                );
             }
 
             if ($order) {
