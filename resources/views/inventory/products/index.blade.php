@@ -10,7 +10,11 @@
             <h2 class="text-2xl font-black">{{ __('ui.product_catalog') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('ui.product_catalog_help') }}</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('inventory.products.export') }}" class="btn-secondary">{{ __('ui.export_products') }}</a>
+            @if(auth()->user()->hasPermission('inventory.products.manage'))
+                <a href="{{ route('inventory.products.import-form') }}" class="btn-secondary">{{ __('ui.import_products') }}</a>
+            @endif
             @if(auth()->user()->hasPermission('inventory.catalog.manage'))
                 <a href="{{ route('inventory.catalog.index') }}" class="btn-secondary">{{ __('ui.catalog_setup') }}</a>
             @endif

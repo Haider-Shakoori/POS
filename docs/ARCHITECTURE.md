@@ -248,3 +248,19 @@ Batch 10 establishes physical count control, damaged/expired inventory write-off
 - report queries aggregate in SQL and cap detail lists instead of loading transactional tables wholesale.
 
 Batch 11 establishes operational reporting, historical profit analytics, inventory valuation and exportable filtered sales reporting. Batch 12 proceeds to printing, barcodes, import/export and settings.
+
+
+## Printing, barcodes, import/export and settings
+
+- sale receipts are read-only projections of immutable sale/payment data and never expose COGS or profit fields.
+- receipt paper size is limited to supported thermal widths (57mm and 80mm) and receipt language is independent of the operator UI language.
+- barcode labels render CODE128 server-side as self-contained SVG so label printing does not depend on an external CDN or browser library.
+- barcode label rendering is limited to printable ASCII values supported by CODE128-B and caps a single print request at 100 labels.
+- product CSV export is catalog-only and deliberately excludes stock-on-hand.
+- product CSV import is create-only: it never overwrites an existing SKU or barcode and never imports or mutates inventory quantities.
+- imported stock must still enter through opening stock, goods receipts, approved counts or other InventoryService-backed movements.
+- CSV import validates the complete file before creating products, caps a single file at 1,000 product rows, and writes through ProductService so normal catalog rules and audit records remain active.
+- shop settings expose shop identity, UI/receipt locale, thermal receipt size, cash variance tolerance, negative-stock policy and discount approval threshold behind settings.manage.
+- settings changes are audited and AFN-only/no-tax product invariants remain non-configurable.
+
+Batch 12 establishes thermal receipt printing, CODE128 label printing, safe catalog CSV import/export and operational shop settings. Batch 13 proceeds to security, performance and concurrency hardening.

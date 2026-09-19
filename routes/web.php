@@ -17,6 +17,8 @@ use App\Http\Controllers\Inventory\InventoryOperationsController;
 use App\Http\Controllers\Inventory\InventoryWriteoffController;
 use App\Http\Controllers\Inventory\StockCountController;
 use App\Http\Controllers\Inventory\ProductController;
+use App\Http\Controllers\Inventory\ProductDataController;
+use App\Http\Controllers\Inventory\BarcodeLabelController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Purchasing\GoodsReceiptController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
@@ -28,7 +30,9 @@ use App\Http\Controllers\Sales\HeldSaleController;
 use App\Http\Controllers\Sales\PosController;
 use App\Http\Controllers\Sales\ProductSearchController;
 use App\Http\Controllers\Sales\SaleController;
+use App\Http\Controllers\Sales\SaleReceiptController;
 use App\Http\Controllers\Sales\SaleReturnController;
+use App\Http\Controllers\Settings\ShopSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -117,6 +121,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{sale}', [SaleController::class, 'show'])
         ->middleware('permission:sales.view')
         ->name('sales.show');
+    Route::get('/sales/{sale}/receipt', SaleReceiptController::class)
+        ->middleware('permission:sales.view')
+        ->name('sales.receipt');
     Route::post('/sales/{sale}/returns', [SaleReturnController::class, 'store'])
         ->middleware('permission:sales.return')
         ->name('sales.returns.store');
@@ -162,6 +169,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/create', [ProductController::class, 'create'])
             ->middleware('permission:inventory.products.manage')
             ->name('products.create');
+        Route::get('/products/import', [ProductDataController::class, 'importForm'])
+            ->middleware('permission:inventory.products.manage')
+            ->name('products.import-form');
+        Route::get('/products/import/template.csv', [ProductDataController::class, 'template'])
+            ->middleware('permission:inventory.products.manage')
+            ->name('products.import-template');
+        Route::post('/products/import', [ProductDataController::class, 'import'])
+            ->middleware('permission:inventory.products.manage')
+            ->name('products.import');
+        Route::get('/products-export.csv', [ProductDataController::class, 'export'])
+            ->middleware('permission:inventory.view')
+            ->name('products.export');
+        Route::get('/barcodes/{productBarcode}/labels', BarcodeLabelController::class)
+            ->middleware('permission:inventory.view')
+            ->name('barcodes.labels');
         Route::post('/products', [ProductController::class, 'store'])
             ->middleware('permission:inventory.products.manage')
             ->name('products.store');
@@ -237,6 +259,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/receipts/{goodsReceipt}/returns', [PurchaseReturnController::class, 'store'])
             ->middleware('permission:purchases.return')
             ->name('receipts.returns.store');
+    });
+
+    Route::prefix('settings')->name('settings.')->middleware('permission:settings.manage')->group(function () {
+        Route::get('/shop', [ShopSettingsController::class, 'edit'])->name('shop.edit');
+        Route::put('/shop', [ShopSettingsController::class, 'update'])->name('shop.update');
     });
 
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');

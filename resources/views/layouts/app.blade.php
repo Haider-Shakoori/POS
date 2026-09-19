@@ -87,6 +87,11 @@
                         <span class="text-lg">◌</span><span>{{ __('ui.reports') }}</span>
                     </a>
                 @endif
+                @if(auth()->user()->hasPermission('settings.manage'))
+                    <a href="{{ route('settings.shop.edit') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">⚙</span><span>{{ __('ui.shop_settings') }}</span>
+                    </a>
+                @endif
             </nav>
 
             <div class="mt-auto panel p-3">
