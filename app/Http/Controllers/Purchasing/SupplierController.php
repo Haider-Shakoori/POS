@@ -54,6 +54,7 @@ class SupplierController extends Controller
 
     public function show(Supplier $supplier): View
     {
+        $supplier->loadCount(['purchaseOrders', 'goodsReceipts']);
         $supplier->load([
             'purchaseOrders' => fn ($query) => $query->latest('order_date')->limit(10),
             'goodsReceipts' => fn ($query) => $query->latest('received_at')->limit(10),

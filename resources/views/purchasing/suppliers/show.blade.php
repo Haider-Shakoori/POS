@@ -18,8 +18,8 @@
 
     <div class="grid gap-4 sm:grid-cols-3">
         <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.opening_balance') }}</div><div class="mt-2 text-2xl font-black">{{ \App\Support\Money::format($supplier->opening_balance) }}</div></div>
-        <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.purchase_orders') }}</div><div class="mt-2 text-2xl font-black">{{ $supplier->purchaseOrders->count() }}</div></div>
-        <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.goods_receipts') }}</div><div class="mt-2 text-2xl font-black">{{ $supplier->goodsReceipts->count() }}</div></div>
+        <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.purchase_orders') }}</div><div class="mt-2 text-2xl font-black">{{ $supplier->purchase_orders_count }}</div></div>
+        <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.goods_receipts') }}</div><div class="mt-2 text-2xl font-black">{{ $supplier->goods_receipts_count }}</div></div>
     </div>
 
     <div class="grid gap-5 xl:grid-cols-2">

@@ -308,7 +308,7 @@ class GoodsReceiptService
 
                 $productUnit = $poItem->productUnit;
             } else {
-                if (! array_key_exists('unit_cost', $item)) {
+                if (! array_key_exists('unit_cost', $item) || $item['unit_cost'] === null || $item['unit_cost'] === '') {
                     throw new DomainException('Direct receipt lines require an explicit unit cost.');
                 }
 

@@ -88,7 +88,7 @@ class PostGoodsReceiptRequest extends FormRequest
                     $validator->errors()->add("items.$index.product_unit_id", __('ui.product_unit_required'));
                 }
 
-                if (! $hasOrder && ! array_key_exists('unit_cost', $item)) {
+                if (! $hasOrder && (! array_key_exists('unit_cost', $item) || $item['unit_cost'] === null || $item['unit_cost'] === '')) {
                     $validator->errors()->add("items.$index.unit_cost", __('ui.direct_unit_cost_required'));
                 }
 

@@ -323,6 +323,9 @@ class PurchasingCoreTest extends TestCase
     public function test_stock_keeper_cannot_record_initial_purchase_payment(): void
     {
         [$product, $cartonUnit] = $this->makeProduct('PERMISSION');
+        $order = $this->approvedOrder($cartonUnit->id, '2', '720.0000');
+        $poItem = $order->items()->firstOrFail();
+
         $stockKeeper = User::factory()->create();
         $stockKeeper->roles()->attach(Role::query()->where('name', 'stock_keeper')->firstOrFail());
 
@@ -332,17 +335,19 @@ class PurchasingCoreTest extends TestCase
             app(GoodsReceiptService::class)->post([
                 'idempotency_key' => (string) Str::uuid(),
                 'supplier_id' => $this->supplier->id,
+                'purchase_order_id' => $order->id,
                 'received_at' => '2026-09-19 18:30:00',
                 'paid_amount' => '10.00',
                 'payment_method' => 'cash',
                 'items' => [[
-                    'product_unit_id' => $cartonUnit->id,
+                    'purchase_order_item_id' => $poItem->id,
                     'quantity' => '1',
                     'unit_cost' => '720.0000',
                 ]],
             ], $stockKeeper);
         } finally {
             $this->assertSame('0.000000', $product->fresh()->stock_on_hand);
+            $this->assertSame('0.000000', $poItem->fresh()->received_quantity);
             $this->assertSame(0, GoodsReceipt::query()->count());
         }
     }
