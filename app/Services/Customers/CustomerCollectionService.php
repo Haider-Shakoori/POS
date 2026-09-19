@@ -11,6 +11,7 @@ use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Cash\CashMovementService;
 use App\Services\Documents\DocumentNumberService;
 use App\Support\Decimal;
 use DomainException;
@@ -21,6 +22,7 @@ class CustomerCollectionService
     public function __construct(
         private readonly DocumentNumberService $numbers,
         private readonly CustomerLedgerService $ledger,
+        private readonly CashMovementService $cash,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -106,6 +108,20 @@ class CustomerCollectionService
                 'collected_at' => $data['collected_at'] ?? now(),
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            if ($method->is_cash) {
+                $this->cash->recordSource(
+                    actor: $actor,
+                    amount: $amount,
+                    direction: 'inflow',
+                    movementType: 'customer_collection',
+                    sourceType: 'customer_collection',
+                    sourceId: $collection->id,
+                    referenceNumber: $collection->number,
+                    reason: 'Cash customer collection',
+                    occurredAt: $collection->collected_at,
+                );
+            }
 
             $this->ledger->credit(
                 customer: $lockedCustomer,
