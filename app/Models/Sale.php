@@ -17,6 +17,7 @@ class Sale extends Model
         'cashier_user_id',
         'terminal_id',
         'cashier_shift_id',
+        'customer_id',
         'status',
         'payment_status',
         'customer_name_snapshot',
@@ -28,6 +29,7 @@ class Sale extends Model
         'gross_profit',
         'paid_amount',
         'balance_due',
+        'settlement_finalized_at',
         'sold_at',
         'notes',
     ];
@@ -45,6 +47,7 @@ class Sale extends Model
             'gross_profit' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'balance_due' => 'decimal:2',
+            'settlement_finalized_at' => 'datetime',
             'sold_at' => 'datetime',
         ];
     }
@@ -56,6 +59,7 @@ class Sale extends Model
                 'payment_status',
                 'paid_amount',
                 'balance_due',
+                'settlement_finalized_at',
                 'updated_at',
             ];
 
@@ -86,8 +90,18 @@ class Sale extends Model
         return $this->belongsTo(CashierShift::class);
     }
 
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SalePayment::class);
     }
 }

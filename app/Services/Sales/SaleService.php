@@ -5,6 +5,7 @@ namespace App\Services\Sales;
 use App\Enums\SalePaymentStatus;
 use App\Enums\SaleStatus;
 use App\Models\CashierShift;
+use App\Models\Customer;
 use App\Models\ProductUnit;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -38,10 +39,15 @@ class SaleService
                 throw new DomainException('The user is not allowed to create sales.');
             }
 
-            if ($existing = Sale::query()->where('idempotency_key', $data['idempotency_key'])->first()) {
+            if ($existing = Sale::query()
+                ->with('items')
+                ->where('idempotency_key', $data['idempotency_key'])
+                ->first()) {
                 if ((int) $existing->cashier_user_id !== (int) $actor->id) {
                     throw new DomainException('The idempotency key is already bound to another sale.');
                 }
+
+                $this->assertRetryMatches($existing, $data);
 
                 return $existing->load([
                     'cashier',
@@ -50,6 +56,19 @@ class SaleService
                     'items.stockAllocations.batch',
                     'items.costConsumptions.layer',
                 ]);
+            }
+
+            $customer = null;
+
+            if (! empty($data['customer_id'])) {
+                $customer = Customer::query()
+                    ->whereKey($data['customer_id'])
+                    ->where('is_active', true)
+                    ->first();
+
+                if (! $customer) {
+                    throw new DomainException('The selected customer is unavailable.');
+                }
             }
 
             $preparedItems = $this->prepareItems($data['items'], $actor);
@@ -119,9 +138,10 @@ class SaleService
                 'cashier_user_id' => $actor->id,
                 'terminal_id' => $openShift?->terminal_id,
                 'cashier_shift_id' => $openShift?->id,
+                'customer_id' => $customer?->id,
                 'status' => SaleStatus::Completed,
                 'payment_status' => SalePaymentStatus::Unpaid,
-                'customer_name_snapshot' => 'Walk-in Customer',
+                'customer_name_snapshot' => $customer?->name ?? 'Walk-in Customer',
                 'subtotal' => $subtotal,
                 'line_discount_total' => $lineDiscountTotal,
                 'sale_discount_amount' => $saleDiscount,
@@ -224,6 +244,56 @@ class SaleService
                 'items.costConsumptions.layer',
             ]);
         });
+    }
+
+    private function assertRetryMatches(Sale $sale, array $data): void
+    {
+        $requestedCustomerId = ! empty($data['customer_id']) ? (int) $data['customer_id'] : null;
+        $existingCustomerId = $sale->customer_id ? (int) $sale->customer_id : null;
+
+        if ($existingCustomerId !== $requestedCustomerId) {
+            throw new DomainException('The sale idempotency key is already bound to another customer selection.');
+        }
+
+        $requestedSaleDiscount = Decimal::normalize($data['sale_discount_amount'] ?? '0', 2);
+
+        if (Decimal::compare($sale->sale_discount_amount, $requestedSaleDiscount) !== 0) {
+            throw new DomainException('The sale idempotency key is already bound to another discount payload.');
+        }
+
+        $requestedItems = collect($data['items'] ?? [])
+            ->map(fn (array $item) => [
+                'product_unit_id' => (int) $item['product_unit_id'],
+                'quantity' => Decimal::normalize($item['quantity']),
+                'line_discount_amount' => Decimal::normalize($item['line_discount_amount'] ?? '0', 2),
+            ])
+            ->sortBy('product_unit_id')
+            ->values();
+
+        $existingItems = $sale->items
+            ->map(fn (SaleItem $item) => [
+                'product_unit_id' => (int) $item->product_unit_id,
+                'quantity' => Decimal::normalize($item->quantity),
+                'line_discount_amount' => Decimal::normalize($item->line_discount_amount, 2),
+            ])
+            ->sortBy('product_unit_id')
+            ->values();
+
+        if ($requestedItems->count() !== $existingItems->count()) {
+            throw new DomainException('The sale idempotency key is already bound to another cart.');
+        }
+
+        foreach ($requestedItems as $index => $requested) {
+            $existing = $existingItems[$index];
+
+            if (
+                $requested['product_unit_id'] !== $existing['product_unit_id']
+                || Decimal::compare($requested['quantity'], $existing['quantity']) !== 0
+                || Decimal::compare($requested['line_discount_amount'], $existing['line_discount_amount']) !== 0
+            ) {
+                throw new DomainException('The sale idempotency key is already bound to another cart.');
+            }
+        }
     }
 
     private function prepareItems(array $items, User $actor): array

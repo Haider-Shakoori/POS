@@ -35,7 +35,11 @@ This repository is a single-shop supermarket POS for Afghanistan. The core domai
 18. Completed sales recalculate all quantities, prices and discounts on the server; browser totals are display-only.
 19. Expiry-tracked physical inventory is depleted FEFO from non-expired, non-blocked batches.
 20. Financial COGS is consumed FIFO from immutable inbound inventory cost layers, independently of FEFO physical picking.
-21. Completed sales carry an outstanding balance until Batch 5 records payment or customer credit settlement.
+21. Completed sales carry authoritative payment status, paid amount and balance due without allowing their commercial totals to be edited.
+22. Fully settled walk-in sales require no customer account; any remaining balance requires an active registered customer.
+23. Customer receivables are append-only ledger entries with transactionally maintained current balances.
+24. Customer credit exposure is enforced under row lock against the configured credit limit unless an explicit override permission is granted.
+25. Sale payment evidence is recorded independently of the cash drawer; Batch 8 later maps cash-method evidence into drawer movements without rewriting sales.
 
 ## Layers
 
@@ -93,3 +97,19 @@ Batch 3 establishes suppliers, purchase orders, partial/full goods receiving, re
 - no payment cash movement is fabricated in Batch 4; completed sales begin with paid_amount 0 and balance_due equal to net_total.
 
 Batch 4 establishes barcode/SKU/multilingual product lookup, the live unit-aware cart, server-authoritative checkout, sale immutability, transactional stock deduction, FIFO historical COGS and FEFO expiry depletion.
+
+
+## Payments and customer receivables
+
+- payment_methods contains configurable active AFN settlement methods; Cash, Bank, Mobile Wallet and Other are seeded.
+- sale_payments stores immutable applied payment evidence. Cash records distinguish applied amount from tendered amount and change.
+- checkout supports split payments; applied amounts never exceed the authoritative server-calculated sale total.
+- customer-linked sales post the full sale as a ledger debit and checkout payments as ledger credits, so customer history reconciles even when the sale is immediately paid.
+- any remaining checkout balance is customer credit and is blocked when it would exceed the customer's limit unless the actor has the dedicated override permission.
+- customer_ledger_entries is append-only and snapshots balance_after for every opening balance, sale, sale payment and collection.
+- customer_collections are immutable receipts; their amounts reduce the customer ledger and allocate oldest outstanding sales first.
+- customer_collection_allocations preserves exactly which sale balances a collection settled.
+- sale settlement retries are bound to the original customer/payment set and cannot duplicate stock, payments or ledger entries.
+- payment settlement can update only payment_status, paid_amount, balance_due and settlement_finalized_at on a completed sale.
+
+Batch 5 establishes customer accounts, split payments, cash change, credit sales, receivables, collections and customer-ledger reconciliation. Cash-drawer movements remain intentionally deferred to Batch 8.

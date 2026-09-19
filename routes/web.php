@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Customers\CustomerCollectionController;
+use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\Customers\CustomerSearchController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\ProductController;
@@ -36,11 +39,32 @@ Route::middleware('auth')->group(function () {
         Route::post('/sales', [SaleController::class, 'store'])
             ->middleware('permission:sales.create')
             ->name('sales.store');
+        Route::post('/customers', [CustomerController::class, 'store'])
+            ->middleware('permission:customers.quick_create')
+            ->name('customers.store');
     });
 
     Route::get('/sales/{sale}', [SaleController::class, 'show'])
         ->middleware('permission:sales.view')
         ->name('sales.show');
+
+    Route::prefix('customers')->name('customers.')->group(function () {
+        Route::get('/', [CustomerController::class, 'index'])
+            ->middleware('permission:customers.view')
+            ->name('index');
+        Route::get('/search', CustomerSearchController::class)
+            ->middleware('permission:customers.view')
+            ->name('search');
+        Route::post('/', [CustomerController::class, 'store'])
+            ->middleware('permission:customers.manage')
+            ->name('store');
+        Route::get('/{customer}', [CustomerController::class, 'show'])
+            ->middleware('permission:customers.view')
+            ->name('show');
+        Route::post('/{customer}/collections', [CustomerCollectionController::class, 'store'])
+            ->middleware('permission:customers.collect')
+            ->name('collections.store');
+    });
 
     Route::prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/products', [ProductController::class, 'index'])
