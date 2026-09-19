@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Services\Inventory;
+
+use App\Enums\StockMovementType;
+use App\Models\InventoryCostLayer;
+use App\Models\InventoryCostLayerConsumption;
+use App\Models\Product;
+use App\Models\SaleItem;
+use App\Models\StockMovement;
+use App\Support\Decimal;
+use Illuminate\Support\Facades\DB;
+
+class InventoryCostService
+{
+    public function registerInboundMovement(StockMovement $movement): ?InventoryCostLayer
+    {
+        if (
+            ! in_array($movement->movement_type, [StockMovementType::OpeningStock, StockMovementType::Purchase], true)
+            || ! Decimal::isPositive($movement->quantity_base)
+        ) {
+            return null;
+        }
+
+        return InventoryCostLayer::query()->firstOrCreate(
+            ['source_stock_movement_id' => $movement->id],
+            [
+                'product_id' => $movement->product_id,
+                'product_batch_id' => $movement->product_batch_id,
+                'initial_quantity_base' => Decimal::normalize($movement->quantity_base),
+                'remaining_quantity_base' => Decimal::normalize($movement->quantity_base),
+                'unit_cost_base' => Decimal::normalize($movement->unit_cost_base ?? '0', 4),
+                'received_at' => $movement->occurred_at,
+            ],
+        );
+    }
+
+    public function consumeForSaleItem(
+        SaleItem $saleItem,
+        Product $product,
+        string $quantityBase,
+    ): string {
+        return DB::transaction(function () use ($saleItem, $product, $quantityBase): string {
+            $remaining = Decimal::normalize($quantityBase);
+            $totalCost = '0.0000';
+
+            $layers = InventoryCostLayer::query()
+                ->where('product_id', $product->id)
+                ->where('remaining_quantity_base', '>', 0)
+                ->orderBy('received_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($layers as $layer) {
+                if (! Decimal::isPositive($remaining)) {
+                    break;
+                }
+
+                $take = Decimal::compare($layer->remaining_quantity_base, $remaining) <= 0
+                    ? $layer->remaining_quantity_base
+                    : $remaining;
+
+                if (! Decimal::isPositive($take)) {
+                    continue;
+                }
+
+                $cost = Decimal::multiplyRounded($take, $layer->unit_cost_base, 4);
+
+                InventoryCostLayerConsumption::create([
+                    'inventory_cost_layer_id' => $layer->id,
+                    'sale_item_id' => $saleItem->id,
+                    'quantity_base' => $take,
+                    'unit_cost_base' => $layer->unit_cost_base,
+                    'cost_amount' => $cost,
+                    'cost_source' => 'fifo',
+                ]);
+
+                $layer->forceFill([
+                    'remaining_quantity_base' => Decimal::subtract($layer->remaining_quantity_base, $take),
+                ])->save();
+
+                $totalCost = Decimal::add($totalCost, $cost, 4);
+                $remaining = Decimal::subtract($remaining, $take);
+            }
+
+            if (Decimal::isPositive($remaining)) {
+                $fallbackUnitCost = Decimal::normalize($product->purchase_cost, 4);
+                $fallbackCost = Decimal::multiplyRounded($remaining, $fallbackUnitCost, 4);
+
+                InventoryCostLayerConsumption::create([
+                    'inventory_cost_layer_id' => null,
+                    'sale_item_id' => $saleItem->id,
+                    'quantity_base' => $remaining,
+                    'unit_cost_base' => $fallbackUnitCost,
+                    'cost_amount' => $fallbackCost,
+                    'cost_source' => $product->track_stock ? 'fallback_latest' : 'untracked',
+                ]);
+
+                $totalCost = Decimal::add($totalCost, $fallbackCost, 4);
+            }
+
+            return Decimal::round($totalCost, 2);
+        });
+    }
+}
