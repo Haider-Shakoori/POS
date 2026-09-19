@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Purchasing\StoreSupplierRequest;
 use App\Models\Supplier;
 use App\Services\Audit\AuditLogger;
+use App\Services\Suppliers\SupplierLedgerService;
+use App\Support\Decimal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -32,13 +34,32 @@ class SupplierController extends Controller
         return view('purchasing.suppliers.index', compact('suppliers'));
     }
 
-    public function store(StoreSupplierRequest $request, AuditLogger $audit): RedirectResponse
-    {
+    public function store(
+        StoreSupplierRequest $request,
+        AuditLogger $audit,
+        SupplierLedgerService $ledger,
+    ): RedirectResponse {
+        $openingBalance = Decimal::normalize($request->input('opening_balance', '0'), 2);
+
         $supplier = Supplier::create([
             ...$request->validated(),
-            'opening_balance' => $request->input('opening_balance', '0'),
+            'opening_balance' => $openingBalance,
+            'current_balance' => '0.00',
             'is_active' => true,
         ]);
+
+        if (Decimal::isPositive($openingBalance)) {
+            $ledger->credit(
+                supplier: $supplier,
+                amount: $openingBalance,
+                entryType: 'opening_balance',
+                referenceType: 'supplier',
+                referenceId: $supplier->id,
+                referenceNumber: null,
+                actor: $request->user(),
+                notes: 'Supplier opening payable balance.',
+            );
+        }
 
         $audit->record(
             'purchasing.supplier.created',
