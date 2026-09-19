@@ -109,13 +109,35 @@ class ReportingService
             ->selectRaw('COALESCE(SUM(cogs_total),0) as cogs')
             ->first();
 
-        $saleIds = (clone $salesQuery)->pluck('id');
+        $returnsQuery = DB::table('sale_returns')
+            ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
+            ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()]);
 
-        $returns = DB::table('sale_returns')
-            ->whereIn('sale_id', $saleIds)
-            ->whereBetween('posted_at', [$from->startOfDay(), $to->endOfDay()])
-            ->selectRaw('COALESCE(SUM(return_total),0) as return_total')
-            ->selectRaw('COALESCE(SUM(cogs_reversed),0) as cogs_reversed')
+        if (! empty($filters['customer_id'])) {
+            $returnsQuery->where('sales.customer_id', (int) $filters['customer_id']);
+        }
+
+        if (! empty($filters['product_id']) || ! empty($filters['category_id'])) {
+            $returnsQuery->whereExists(function (Builder $query) use ($filters): void {
+                $query->selectRaw('1')
+                    ->from('sale_return_items')
+                    ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
+                    ->join('products', 'products.id', '=', 'sale_items.product_id')
+                    ->whereColumn('sale_return_items.sale_return_id', 'sale_returns.id');
+
+                if (! empty($filters['product_id'])) {
+                    $query->where('sale_items.product_id', (int) $filters['product_id']);
+                }
+
+                if (! empty($filters['category_id'])) {
+                    $query->where('products.category_id', (int) $filters['category_id']);
+                }
+            });
+        }
+
+        $returns = $returnsQuery
+            ->selectRaw('COALESCE(SUM(sale_returns.return_total),0) as return_total')
+            ->selectRaw('COALESCE(SUM(sale_returns.cogs_reversed),0) as cogs_reversed')
             ->first();
 
         $salesNet = Decimal::normalize((string) ($sales->net_total ?? 0), 2);
@@ -223,11 +245,13 @@ class ReportingService
 
     private function productPerformance(CarbonImmutable $from, CarbonImmutable $to, array $filters, bool $descending): Collection
     {
-        $query = DB::table('sale_items')
+        $sales = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['product_id']), fn ($q) => $q->where('products.id', (int) $filters['product_id']))
+            ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
             ->select(
                 'products.id',
                 'products.sku',
@@ -238,53 +262,131 @@ class ReportingService
                 'categories.name_fa as category_name_fa',
                 'categories.name_ps as category_name_ps',
             )
-            ->selectRaw('SUM(sale_items.quantity_base) as quantity_base')
-            ->selectRaw('SUM(sale_items.line_net_total) as net_sales')
-            ->selectRaw('SUM(sale_items.cogs_amount) as cogs')
-            ->selectRaw('SUM(sale_items.gross_profit) as gross_profit')
+            ->selectRaw('SUM(sale_items.quantity_base) as sold_quantity_base')
+            ->selectRaw('SUM(sale_items.line_net_total) as sold_net_sales')
+            ->selectRaw('SUM(sale_items.cogs_amount) as sold_cogs')
             ->groupBy(
                 'products.id','products.sku','products.name_en','products.name_fa','products.name_ps',
                 'categories.name_en','categories.name_fa','categories.name_ps'
-            );
+            )
+            ->get()
+            ->keyBy('id');
 
-        if (! empty($filters['product_id'])) {
-            $query->where('products.id', (int) $filters['product_id']);
-        }
+        $returns = DB::table('sale_return_items')
+            ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
+            ->join('products', 'products.id', '=', 'sale_items.product_id')
+            ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['product_id']), fn ($q) => $q->where('products.id', (int) $filters['product_id']))
+            ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
+            ->select('products.id')
+            ->selectRaw('SUM(sale_return_items.quantity_base) as returned_quantity_base')
+            ->selectRaw('SUM(sale_return_items.return_amount) as returned_value')
+            ->selectRaw('SUM(sale_return_items.cogs_amount) as returned_cogs')
+            ->groupBy('products.id')
+            ->get()
+            ->keyBy('id');
 
-        if (! empty($filters['category_id'])) {
-            $query->where('products.category_id', (int) $filters['category_id']);
-        }
+        $ids = $sales->keys()->merge($returns->keys())->unique();
 
-        return $query
-            ->orderBy('quantity_base', $descending ? 'desc' : 'asc')
-            ->limit(10)
-            ->get();
+        return $ids->map(function ($id) use ($sales, $returns): object {
+            $sale = $sales->get($id);
+            $return = $returns->get($id);
+
+            $soldQty = Decimal::normalize((string) ($sale->sold_quantity_base ?? 0));
+            $returnedQty = Decimal::normalize((string) ($return->returned_quantity_base ?? 0));
+            $netQty = Decimal::subtract($soldQty, $returnedQty);
+
+            $soldNet = Decimal::normalize((string) ($sale->sold_net_sales ?? 0), 2);
+            $returnedValue = Decimal::normalize((string) ($return->returned_value ?? 0), 2);
+            $netSales = Decimal::subtract($soldNet, $returnedValue, 2);
+
+            $soldCogs = Decimal::normalize((string) ($sale->sold_cogs ?? 0), 2);
+            $returnedCogs = Decimal::normalize((string) ($return->returned_cogs ?? 0), 2);
+            $netCogs = Decimal::subtract($soldCogs, $returnedCogs, 2);
+
+            return (object) [
+                'id' => (int) $id,
+                'sku' => $sale->sku ?? Product::query()->whereKey($id)->value('sku'),
+                'name_en' => $sale->name_en ?? Product::query()->whereKey($id)->value('name_en'),
+                'name_fa' => $sale->name_fa ?? Product::query()->whereKey($id)->value('name_fa'),
+                'name_ps' => $sale->name_ps ?? Product::query()->whereKey($id)->value('name_ps'),
+                'category_name_en' => $sale->category_name_en ?? null,
+                'category_name_fa' => $sale->category_name_fa ?? null,
+                'category_name_ps' => $sale->category_name_ps ?? null,
+                'quantity_base' => $netQty,
+                'net_sales' => $netSales,
+                'cogs' => $netCogs,
+                'gross_profit' => Decimal::subtract($netSales, $netCogs, 2),
+            ];
+        })
+        ->sortBy('quantity_base', SORT_REGULAR, $descending)
+        ->take(10)
+        ->values();
     }
 
     private function categoryProfit(CarbonImmutable $from, CarbonImmutable $to, array $filters): Collection
     {
-        $query = DB::table('sale_items')
+        $sales = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
             ->select(
                 'categories.id',
                 DB::raw("COALESCE(categories.name_en, 'Uncategorized') as name_en"),
                 'categories.name_fa',
                 'categories.name_ps'
             )
-            ->selectRaw('SUM(sale_items.line_net_total) as net_sales')
-            ->selectRaw('SUM(sale_items.cogs_amount) as cogs')
-            ->selectRaw('SUM(sale_items.gross_profit) as gross_profit')
+            ->selectRaw('SUM(sale_items.line_net_total) as sold_net_sales')
+            ->selectRaw('SUM(sale_items.cogs_amount) as sold_cogs')
             ->groupBy('categories.id','categories.name_en','categories.name_fa','categories.name_ps')
-            ->orderByDesc('gross_profit');
+            ->get()
+            ->keyBy(fn ($row) => $row->id === null ? 'uncategorized' : (string) $row->id);
 
-        if (! empty($filters['category_id'])) {
-            $query->where('products.category_id', (int) $filters['category_id']);
-        }
+        $returns = DB::table('sale_return_items')
+            ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
+            ->join('products', 'products.id', '=', 'sale_items.product_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+            ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when(! empty($filters['category_id']), fn ($q) => $q->where('products.category_id', (int) $filters['category_id']))
+            ->select('categories.id')
+            ->selectRaw('SUM(sale_return_items.return_amount) as returned_value')
+            ->selectRaw('SUM(sale_return_items.cogs_amount) as returned_cogs')
+            ->groupBy('categories.id')
+            ->get()
+            ->keyBy(fn ($row) => $row->id === null ? 'uncategorized' : (string) $row->id);
 
-        return $query->limit(20)->get();
+        return $sales->keys()->merge($returns->keys())->unique()->map(function ($key) use ($sales, $returns): object {
+            $sale = $sales->get($key);
+            $return = $returns->get($key);
+
+            $netSales = Decimal::subtract(
+                Decimal::normalize((string) ($sale->sold_net_sales ?? 0), 2),
+                Decimal::normalize((string) ($return->returned_value ?? 0), 2),
+                2,
+            );
+            $netCogs = Decimal::subtract(
+                Decimal::normalize((string) ($sale->sold_cogs ?? 0), 2),
+                Decimal::normalize((string) ($return->returned_cogs ?? 0), 2),
+                2,
+            );
+
+            return (object) [
+                'id' => $key === 'uncategorized' ? null : (int) $key,
+                'name_en' => $sale->name_en ?? 'Uncategorized',
+                'name_fa' => $sale->name_fa ?? null,
+                'name_ps' => $sale->name_ps ?? null,
+                'net_sales' => $netSales,
+                'cogs' => $netCogs,
+                'gross_profit' => Decimal::subtract($netSales, $netCogs, 2),
+            ];
+        })
+        ->sortByDesc('gross_profit')
+        ->take(20)
+        ->values();
     }
 
     private function customerSummary(CarbonImmutable $from, CarbonImmutable $to, array $filters): Collection
