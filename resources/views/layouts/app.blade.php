@@ -55,6 +55,9 @@
                     <a href="{{ route('inventory.products.index') }}" class="nav-link {{ request()->routeIs('inventory.products.*') ? 'nav-link-active' : '' }}">
                         <span class="text-lg">□</span><span>{{ __('ui.products') }}</span>
                     </a>
+                    <a href="{{ route('inventory.operations.index') }}" class="nav-link {{ request()->routeIs('inventory.operations.*') || request()->routeIs('inventory.stock-counts.*') || request()->routeIs('inventory.writeoffs.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">◎</span><span>{{ __('ui.inventory_operations') }}</span>
+                    </a>
                 @endif
                 @if(auth()->user()->hasPermission('purchases.view'))
                     <a href="{{ route('purchasing.orders.index') }}" class="nav-link {{ request()->routeIs('purchasing.orders.*') ? 'nav-link-active' : '' }}">
