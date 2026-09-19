@@ -5,12 +5,14 @@ namespace App\Models;
 use App\Enums\ShiftStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CashierShift extends Model
 {
     protected $fillable = [
         'terminal_id',
         'user_id',
+        'open_idempotency_key',
         'opened_at',
         'closed_at',
         'opening_cash',
@@ -42,5 +44,10 @@ class CashierShift extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(CashMovement::class, 'cashier_shift_id');
     }
 }
