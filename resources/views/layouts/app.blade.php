@@ -41,6 +41,19 @@
                         <span class="text-lg">□</span><span>{{ __('ui.products') }}</span>
                     </a>
                 @endif
+                @if(auth()->user()->hasPermission('purchases.view'))
+                    <a href="{{ route('purchasing.orders.index') }}" class="nav-link {{ request()->routeIs('purchasing.orders.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">⇣</span><span>{{ __('ui.purchase_orders') }}</span>
+                    </a>
+                    <a href="{{ route('purchasing.receipts.index') }}" class="nav-link {{ request()->routeIs('purchasing.receipts.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">✓</span><span>{{ __('ui.goods_receipts') }}</span>
+                    </a>
+                @endif
+                @if(auth()->user()->hasPermission('suppliers.view'))
+                    <a href="{{ route('purchasing.suppliers.index') }}" class="nav-link {{ request()->routeIs('purchasing.suppliers.*') ? 'nav-link-active' : '' }}">
+                        <span class="text-lg">△</span><span>{{ __('ui.suppliers') }}</span>
+                    </a>
+                @endif
                 @if(auth()->user()->hasPermission('inventory.catalog.manage'))
                     <a href="{{ route('inventory.catalog.index') }}" class="nav-link {{ request()->routeIs('inventory.catalog.*') ? 'nav-link-active' : '' }}">
                         <span class="text-lg">◇</span><span>{{ __('ui.catalog_setup') }}</span>
@@ -51,7 +64,6 @@
             <div class="mt-6 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{{ __('ui.next_modules') }}</div>
             <div class="mt-2 space-y-1 opacity-70">
                 <div class="nav-link cursor-default"><span>◇</span><span>{{ __('ui.customers') }}</span></div>
-                <div class="nav-link cursor-default"><span>△</span><span>{{ __('ui.suppliers') }}</span></div>
                 <div class="nav-link cursor-default"><span>◌</span><span>{{ __('ui.reports') }}</span></div>
             </div>
 

@@ -19,7 +19,10 @@ class AccessControlSeeder extends Seeder
             'sales.discount' => 'Apply sales discounts',
             'purchases.view' => 'View purchases',
             'purchases.create' => 'Create purchases',
-            'purchases.approve' => 'Approve purchases',
+            'purchases.approve' => 'Approve and cancel purchase orders',
+            'purchases.receive' => 'Receive approved purchase orders',
+            'purchases.direct_receive' => 'Receive stock without a purchase order',
+            'purchases.record_payment' => 'Record initial purchase payments',
             'inventory.view' => 'View inventory',
             'inventory.products.manage' => 'Create and manage products',
             'inventory.catalog.manage' => 'Manage categories, brands and units',
@@ -69,7 +72,8 @@ class AccessControlSeeder extends Seeder
         $assignments = [
             'manager' => [
                 'pos.access', 'sales.view', 'sales.create', 'sales.return', 'sales.void', 'sales.discount',
-                'purchases.view', 'purchases.create', 'purchases.approve',
+                'purchases.view', 'purchases.create', 'purchases.approve', 'purchases.receive',
+                'purchases.direct_receive', 'purchases.record_payment',
                 'inventory.view', 'inventory.products.manage', 'inventory.catalog.manage', 'inventory.opening_stock',
                 'inventory.adjust', 'inventory.count', 'inventory.count.approve',
                 'customers.view', 'customers.manage', 'customers.collect',
@@ -82,12 +86,13 @@ class AccessControlSeeder extends Seeder
                 'customers.view', 'customers.collect', 'shifts.open', 'shifts.close',
             ],
             'stock_keeper' => [
-                'purchases.view', 'purchases.create',
+                'purchases.view', 'purchases.create', 'purchases.receive',
                 'inventory.view', 'inventory.products.manage', 'inventory.catalog.manage', 'inventory.opening_stock',
                 'inventory.adjust', 'inventory.count', 'suppliers.view',
             ],
             'accountant' => [
-                'sales.view', 'purchases.view', 'customers.view', 'customers.collect',
+                'sales.view', 'purchases.view', 'purchases.record_payment',
+                'customers.view', 'customers.collect',
                 'suppliers.view', 'suppliers.pay', 'expenses.view', 'expenses.create',
                 'reports.view', 'reports.profit',
             ],

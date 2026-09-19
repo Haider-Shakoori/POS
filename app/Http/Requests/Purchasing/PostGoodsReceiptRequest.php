@@ -4,6 +4,7 @@ namespace App\Http\Requests\Purchasing;
 
 use App\Enums\PurchaseExpenseType;
 use App\Enums\PurchasePaymentMethod;
+use App\Support\Decimal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -49,7 +50,7 @@ class PostGoodsReceiptRequest extends FormRequest
             'items.*.batch_number' => ['nullable', 'string', 'max:100'],
             'items.*.manufactured_at' => ['nullable', 'date'],
             'items.*.expires_at' => ['nullable', 'date'],
-            
+
             'expenses' => ['nullable', 'array'],
             'expenses.*.type' => ['required', Rule::enum(PurchaseExpenseType::class)],
             'expenses.*.description' => ['nullable', 'string', 'max:180'],
@@ -65,7 +66,7 @@ class PostGoodsReceiptRequest extends FormRequest
             if (
                 $paid !== null
                 && ! $validator->errors()->has('paid_amount')
-                && bccomp((string) $paid, '0', 2) === 1
+                && Decimal::compare($paid, '0') > 0
                 && ! $this->filled('payment_method')
             ) {
                 $validator->errors()->add('payment_method', __('ui.payment_method_required'));
