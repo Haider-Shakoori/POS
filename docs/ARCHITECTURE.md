@@ -49,7 +49,16 @@ This repository is a single-shop supermarket POS for Afghanistan. The core domai
 32. Supplier payable history is append-only and goods-receipt commercial totals remain immutable.
 33. Purchase returns may remove only stock still traceable to the original receipt cost layer and physical stock/batch.
 34. Purchase returns reverse the original item landed value and exact source inventory cost layer.
-35. Supplier payments and purchase returns record financial evidence independently of cash-drawer movements until Batch 8.
+35. Supplier payments and purchase returns preserve their financial evidence independently; cash-method evidence is mirrored into the drawer ledger by Batch 8.
+36. Every drawer cash movement belongs to one cashier shift and terminal and is append-only.
+37. Opening float is the first drawer movement for a shift, including zero opening cash.
+38. Cash sales and customer collections are inflows; cash purchase/supplier payments, refunds and expenses are outflows.
+39. Non-cash payment methods never create drawer movements.
+40. Cash-affecting source transactions require an open cashier shift and roll back if their drawer movement cannot be posted.
+41. cashier_shifts.expected_cash is derived from the cash movement ledger, never hand-entered.
+42. Manual deposits/withdrawals/drawer-to-safe movements are operational cash transfers and do not affect profit.
+43. Operating expenses and other income are immutable AFN entries; only cash-method entries affect drawer cash.
+44. Batch 9 closes and reconciles shifts against this ledger instead of reconstructing cash from sales, purchases or expenses.
 
 ## Layers
 
@@ -158,3 +167,23 @@ Batch 6 establishes held carts, partial/full sales returns, controlled voids, hi
 - supplier payment and purchase-return cash effects remain evidence-only until Batch 8 creates cash-drawer movements.
 
 Batch 7 establishes supplier payable reconciliation, later supplier payments, signed supplier credit, and traceable purchase returns with exact stock/cost reversal.
+
+
+## Cash drawer and operating entries
+
+- cash_movements is the authoritative append-only physical drawer ledger.
+- every movement is bound to cashier_shift_id and terminal_id and carries a posting-order expected_cash_after snapshot.
+- CashMovementService serializes writes with shift row locks, guarantees source/idempotency uniqueness, and recalculates the shift's expected_cash from ledger totals.
+- ShiftOpeningService creates at most one open shift per user/terminal, binds retries to the same terminal/opening float, and creates exactly one opening-float movement even when opening cash is zero.
+- checkout cash payments mirror SalePayment.applied_amount, not tendered cash, because tendered minus change equals the net drawer inflow.
+- customer collections mirror their collection amount once; generated per-sale allocation payments are intentionally not double-counted.
+- cash supplier payments and initial purchase payments are drawer outflows.
+- cash sale refunds are drawer outflows; non-cash refunds create no drawer movement.
+- expense_categories separates expense and income categories while operating_entries stores immutable AFN operating evidence.
+- cash expenses reduce expected cash; bank/mobile-wallet/other expenses do not.
+- cash other income increases expected cash.
+- manual cash_deposit, cash_withdrawal and drawer_to_safe movements require cash.manage and a reason; these are excluded from operating profit semantics.
+- the Batch 8 migration backfills opening float and eligible pre-existing cash evidence into historical shifts and updates expected_cash.
+- runtime cash evidence may not be posted before the active shift's opened_at timestamp.
+
+Batch 8 establishes the authoritative expected-cash ledger and operating expense/income workflow. Batch 9 adds shift closing, actual cash, variance tolerance, business-day locking and consolidated daily reconciliation.
