@@ -66,8 +66,51 @@ jobs:
       - name: Install frontend dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Upload generated dependency locks
+        uses: actions/upload-artifact@v4
+        with:
+          name: batch-14-lockfiles
+          path: |
+            composer.lock
+            package-lock.json
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Build frontend
         run: npm run build
 
-      - name: Run PHP tests
+      - name: Verify production cache warm-up
+        env:
+          APP_ENV: production
+          APP_DEBUG: false
+          APP_URL: https://pos.example.test
+          SESSION_SECURE_COOKIE: true
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan config:clear
+          php artisan route:clear
+          php artisan view:clear
+
+      - name: Audit Composer dependencies
+        run: composer audit --no-interaction
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+
+      - name: Run PHP tests on SQLite
+        run: php artisan test
+
+      - name: Run PHP tests on MySQL
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: pos_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
         run: php artisan test
