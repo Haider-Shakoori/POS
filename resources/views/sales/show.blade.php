@@ -31,6 +31,28 @@
         </div>
     @endif
 
+    @if($sale->payments->isNotEmpty())
+        <section class="panel overflow-hidden">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800"><h3 class="font-black">{{ __('ui.payments') }}</h3></div>
+            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                @foreach($sale->payments as $payment)
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm">
+                        <div>
+                            <div class="font-semibold">{{ $payment->paymentMethod->localizedName() }}</div>
+                            <div class="mt-1 text-xs text-slate-500">{{ $payment->paid_at->format('Y-m-d H:i') }} @if($payment->reference) · {{ $payment->reference }} @endif</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="font-black">{{ AppSupportMoney::format($payment->applied_amount) }}</div>
+                            @if(AppSupportDecimal::isPositive($payment->change_amount))
+                                <div class="mt-1 text-xs text-slate-500">{{ __('ui.change') }}: {{ AppSupportMoney::format($payment->change_amount) }}</div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     <section class="panel overflow-hidden">
         <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800"><h3 class="font-black">{{ __('ui.sale_items') }}</h3></div>
         <div class="overflow-x-auto">
@@ -63,8 +85,10 @@
         </div>
     </section>
 
-    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-        {{ __('ui.sale_payment_pending_notice') }}
-    </div>
+    @if(AppSupportDecimal::isPositive($sale->balance_due))
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+            {{ __('ui.sale_balance_due_notice') }}
+        </div>
+    @endif
 </div>
 @endsection
