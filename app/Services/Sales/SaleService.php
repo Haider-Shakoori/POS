@@ -12,6 +12,7 @@ use App\Models\SaleItem;
 use App\Models\SaleItemStockAllocation;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Closing\BusinessDayService;
 use App\Services\Documents\DocumentNumberService;
 use App\Services\Inventory\InventoryCostService;
 use App\Services\Inventory\InventoryService;
@@ -28,6 +29,7 @@ class SaleService
         private readonly ProportionalAllocator $allocator,
         private readonly InventoryService $inventory,
         private readonly InventoryCostService $costing,
+        private readonly BusinessDayService $days,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -57,6 +59,8 @@ class SaleService
                     'items.costConsumptions.layer',
                 ]);
             }
+
+            $this->days->lockOpen(now());
 
             $customer = null;
 
