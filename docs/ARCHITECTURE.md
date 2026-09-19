@@ -24,20 +24,36 @@ This repository is a single-shop supermarket POS for Afghanistan. The core domai
 7. Shop timezone defaults to Asia/Kabul.
 8. AFN is a product invariant, not a configurable multi-currency choice.
 9. Sales tax is intentionally absent from the domain.
+10. Product stock is stored in the product base unit with six-decimal quantity precision.
+11. Product and unit conversion math uses arbitrary-precision decimal arithmetic, never binary floats.
+12. Every inventory quantity change produces an append-only stock movement.
+13. Expiry-tracked inventory is batch-bound so later FEFO allocation can use the same ledger.
 
 ## Layers
 
 - Controllers: HTTP orchestration only.
+- Form Requests: authorization and input validation.
 - Services: business workflows and transaction boundaries.
 - Models: persistence relationships and casts.
-- Policies / permissions: authorization.
+- Policies and permissions: authorization.
 - Audit service: sensitive-action traceability.
 - Views: presentation only; no authoritative financial calculation.
 
+## Inventory model
+
+- products.stock_on_hand is a fast cached total in the base unit.
+- product_units.conversion_factor expresses how many base units exist in one alternate unit.
+- product_batches.stock_on_hand tracks the balance of a lot when batch tracking is used.
+- stock_movements is the immutable inventory audit trail.
+- Opening stock is recorded through InventoryService, not by directly setting product quantities.
+- Future purchases, sales, returns, damage, expiry and stock counts must call the same inventory service.
+
 ## Concurrency
 
-Transactional modules will use database transactions, row locks where stock or balances can race, database unique constraints for references/idempotency, and server-side revalidation before commit.
+Inventory writes use database transactions and row locks on affected product and batch rows. Future purchasing and POS services will supply idempotency keys and source references so retried requests cannot duplicate stock effects.
 
 ## Current foundation
 
-Batch 1 establishes authentication, RBAC, localization, AFN conventions, shop settings, terminals, cashier shifts, audit logging, and modern admin/POS shells.
+Batch 1 established authentication, RBAC, localization, AFN conventions, shop settings, terminals, cashier shifts, audit logging, and modern admin/POS shells.
+
+Batch 2 establishes categories, brands, units, products, multiple barcodes, unit conversions, batch and expiry foundations, exact quantity math, opening stock, and the append-only stock movement ledger.
