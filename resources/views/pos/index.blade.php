@@ -160,7 +160,16 @@ function posWorkspace(config) {
         submitting: false,
         message: '',
         lastSale: null,
+        saleKey: null,
         canDiscount: config.canDiscount,
+
+        init() {
+            this.resetSaleKey();
+        },
+
+        resetSaleKey() {
+            this.saleKey = crypto.randomUUID();
+        },
 
         async searchProducts() {
             this.message = '';
@@ -291,7 +300,7 @@ function posWorkspace(config) {
                         'X-CSRF-TOKEN': config.csrf,
                     },
                     body: JSON.stringify({
-                        idempotency_key: crypto.randomUUID(),
+                        idempotency_key: this.saleKey,
                         sale_discount_amount: this.canDiscount ? String(this.saleDiscount || '0') : '0',
                         items: this.cart.map(item => ({
                             product_unit_id: item.product_unit_id,
@@ -314,6 +323,7 @@ function posWorkspace(config) {
                 this.cart = [];
                 this.saleDiscount = '0.00';
                 this.message = '';
+                this.resetSaleKey();
                 this.$nextTick(() => this.$refs.search.focus());
             } catch (error) {
                 this.message = error.message || config.labels.saleFailed;

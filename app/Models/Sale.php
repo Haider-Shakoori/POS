@@ -51,12 +51,23 @@ class Sale extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (): never {
-            throw new LogicException('Completed sales are immutable.');
+        static::updating(function (Sale $sale): void {
+            $allowed = [
+                'payment_status',
+                'paid_amount',
+                'balance_due',
+                'updated_at',
+            ];
+
+            $forbidden = array_diff(array_keys($sale->getDirty()), $allowed);
+
+            if ($forbidden !== []) {
+                throw new LogicException('Completed sale commercial fields are immutable.');
+            }
         });
 
         static::deleting(function (): never {
-            throw new LogicException('Completed sales are immutable.');
+            throw new LogicException('Completed sales are immutable and cannot be deleted.');
         });
     }
 

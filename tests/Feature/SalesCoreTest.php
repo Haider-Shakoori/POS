@@ -275,6 +275,35 @@ class SalesCoreTest extends TestCase
         }
     }
 
+    public function test_payment_summary_can_change_without_mutating_commercial_sale_fields(): void
+    {
+        [$product, $piece] = $this->makeProduct(sku: 'PAYMENT-MUTABLE');
+        $this->receive($piece->id, '2', '10.0000');
+
+        $sale = app(SaleService::class)->complete([
+            'idempotency_key' => (string) Str::uuid(),
+            'sale_discount_amount' => '0.00',
+            'items' => [[
+                'product_unit_id' => $piece->id,
+                'quantity' => '1',
+                'line_discount_amount' => '0.00',
+            ]],
+        ], $this->owner);
+
+        $sale->forceFill([
+            'payment_status' => 'paid',
+            'paid_amount' => $sale->net_total,
+            'balance_due' => '0.00',
+        ])->save();
+
+        $this->assertSame('0.00', $sale->fresh()->balance_due);
+
+        $sale->net_total = '1.00';
+
+        $this->expectException(LogicException::class);
+        $sale->save();
+    }
+
     public function test_discount_permission_does_not_automatically_allow_below_minimum_price(): void
     {
         [$product, $piece] = $this->makeProduct(sku: 'MIN-PRICE', minimumPrice: '25.00');

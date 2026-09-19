@@ -249,7 +249,11 @@ class SaleService
                 ->whereKey($productUnitId)
                 ->where('can_sell', true)
                 ->whereHas('product', fn ($query) => $query->where('is_active', true))
-                ->firstOrFail();
+                ->first();
+
+            if (! $productUnit) {
+                throw new DomainException('The selected product unit is not available for sale.');
+            }
 
             $quantity = Decimal::normalize($item['quantity']);
 
