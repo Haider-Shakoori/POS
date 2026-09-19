@@ -264,3 +264,19 @@ Batch 11 establishes operational reporting, historical profit analytics, invento
 - settings changes are audited and AFN-only/no-tax product invariants remain non-configurable.
 
 Batch 12 establishes thermal receipt printing, CODE128 label printing, safe catalog CSV import/export and operational shop settings. Batch 13 proceeds to security, performance and concurrency hardening.
+
+
+## Security, performance and concurrency hardening
+
+- failed authentication attempts are rate-limited by normalized username plus client IP; successful authentication clears the limiter and still regenerates the session identifier.
+- web responses add defensive browser headers for MIME sniffing, framing, referrer handling, cross-domain policy, permissions policy, object embedding, base URI and form targets.
+- HSTS is emitted only for secure production requests so local HTTP development is not broken.
+- session payload encryption is enabled by default while Laravel's existing HttpOnly and SameSite session-cookie protections remain in place.
+- high-frequency product lookup remains available to POS terminals but is bounded; heavier CSV import and sales-export endpoints use stricter request throttles.
+- ShopSettingsStore is request-scoped and migration-safe. Locale middleware, dashboard and the application layout reuse the same settings model inside a request rather than issuing duplicate reads.
+- indexes cover sellable/purchasable product-unit traversal, product-first sale-item analytics and customer/date sales reporting, matching the established POS/report query shapes.
+- DocumentNumberService now guarantees that its SELECT ... FOR UPDATE sequence lock always runs inside a database transaction even when number generation is called outside another workflow transaction.
+- checkout, goods receipt, customer collection, supplier payment, purchase return and sale return retry the entire outer transaction up to three times on retryable database deadlocks. Existing idempotency keys and unique constraints remain the duplicate-prevention boundary.
+- existing product, batch, inventory-cost-layer, customer, supplier, shift and business-day row locks remain authoritative; Batch 13 does not introduce alternate stock, cash, receivable or payable calculations.
+
+Batch 13 hardens the production boundary without changing AFN-only, no-tax, FIFO/FEFO, ledger or closing semantics. Batch 14 proceeds to final golden-path QA and production readiness.
