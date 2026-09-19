@@ -4,10 +4,12 @@ namespace App\Services\Inventory;
 
 use App\Enums\StockMovementType;
 use App\Models\GoodsReceiptItem;
+use App\Models\InventoryCostAdjustmentConsumption;
 use App\Models\InventoryCostLayer;
 use App\Models\InventoryCostLayerConsumption;
 use App\Models\InventoryCostLayerRestoration;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\SaleItem;
 use App\Models\SaleReturnItem;
 use App\Models\StockMovement;
@@ -20,7 +22,11 @@ class InventoryCostService
     public function registerInboundMovement(StockMovement $movement): ?InventoryCostLayer
     {
         if (
-            ! in_array($movement->movement_type, [StockMovementType::OpeningStock, StockMovementType::Purchase], true)
+            ! in_array($movement->movement_type, [
+                StockMovementType::OpeningStock,
+                StockMovementType::Purchase,
+                StockMovementType::AdjustmentIn,
+            ], true)
             || ! Decimal::isPositive($movement->quantity_base)
         ) {
             return null;
@@ -105,6 +111,103 @@ class InventoryCostService
             }
 
             return Decimal::round($totalCost, 2);
+        });
+    }
+
+    public function consumeForAdjustment(
+        StockMovement $movement,
+        Product $product,
+        string $quantityBase,
+        ?ProductBatch $batch = null,
+    ): string {
+        return DB::transaction(function () use ($movement, $product, $quantityBase, $batch): string {
+            $existing = InventoryCostAdjustmentConsumption::query()
+                ->where('stock_movement_id', $movement->id)
+                ->get();
+
+            if ($existing->isNotEmpty()) {
+                $total = '0.0000';
+
+                foreach ($existing as $record) {
+                    $total = Decimal::add($total, $record->cost_amount, 4);
+                }
+
+                return $total;
+            }
+
+            $remaining = Decimal::normalize($quantityBase);
+            $totalCost = '0.0000';
+
+            if (! Decimal::isPositive($remaining)) {
+                throw new DomainException('Inventory cost adjustment quantity must be greater than zero.');
+            }
+
+            $query = InventoryCostLayer::query()
+                ->where('product_id', $product->id)
+                ->where('remaining_quantity_base', '>', 0);
+
+            if ($batch) {
+                $query->where('product_batch_id', $batch->id);
+            }
+
+            $layers = $query
+                ->orderBy('received_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($layers as $layer) {
+                if (! Decimal::isPositive($remaining)) {
+                    break;
+                }
+
+                $take = Decimal::compare($layer->remaining_quantity_base, $remaining) <= 0
+                    ? $layer->remaining_quantity_base
+                    : $remaining;
+
+                if (! Decimal::isPositive($take)) {
+                    continue;
+                }
+
+                $cost = Decimal::multiplyRounded($take, $layer->unit_cost_base, 4);
+
+                InventoryCostAdjustmentConsumption::create([
+                    'stock_movement_id' => $movement->id,
+                    'inventory_cost_layer_id' => $layer->id,
+                    'quantity_base' => $take,
+                    'unit_cost_base' => $layer->unit_cost_base,
+                    'cost_amount' => $cost,
+                    'cost_source' => 'fifo',
+                ]);
+
+                $layer->forceFill([
+                    'remaining_quantity_base' => Decimal::subtract(
+                        $layer->remaining_quantity_base,
+                        $take,
+                    ),
+                ])->save();
+
+                $totalCost = Decimal::add($totalCost, $cost, 4);
+                $remaining = Decimal::subtract($remaining, $take);
+            }
+
+            if (Decimal::isPositive($remaining)) {
+                $fallbackUnitCost = Decimal::normalize($product->purchase_cost, 4);
+                $fallbackCost = Decimal::multiplyRounded($remaining, $fallbackUnitCost, 4);
+
+                InventoryCostAdjustmentConsumption::create([
+                    'stock_movement_id' => $movement->id,
+                    'inventory_cost_layer_id' => null,
+                    'quantity_base' => $remaining,
+                    'unit_cost_base' => $fallbackUnitCost,
+                    'cost_amount' => $fallbackCost,
+                    'cost_source' => 'fallback_latest',
+                ]);
+
+                $totalCost = Decimal::add($totalCost, $fallbackCost, 4);
+            }
+
+            return $totalCost;
         });
     }
 
