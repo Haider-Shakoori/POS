@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Cash\CashMovementService;
 use App\Services\Documents\DocumentNumberService;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
@@ -19,6 +20,7 @@ class SupplierPaymentService
     public function __construct(
         private readonly DocumentNumberService $numbers,
         private readonly SupplierLedgerService $ledger,
+        private readonly CashMovementService $cash,
         private readonly AuditLogger $audit,
     ) {
     }
@@ -119,6 +121,20 @@ class SupplierPaymentService
                 ])->save();
 
                 $remaining = Decimal::subtract($remaining, $take, 2);
+            }
+
+            if ($method === PurchasePaymentMethod::Cash) {
+                $this->cash->recordSource(
+                    actor: $actor,
+                    amount: $amount,
+                    direction: 'outflow',
+                    movementType: 'supplier_payment',
+                    sourceType: 'supplier_payment',
+                    sourceId: $payment->id,
+                    referenceNumber: $payment->number,
+                    reason: 'Cash supplier payment',
+                    occurredAt: $payment->paid_at,
+                );
             }
 
             $this->ledger->debit(
