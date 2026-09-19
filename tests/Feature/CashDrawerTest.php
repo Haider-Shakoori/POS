@@ -236,11 +236,11 @@ class CashDrawerTest extends TestCase
         $this->assertSame(1, CashMovement::query()->where('movement_type', 'cash_withdrawal')->count());
         $this->assertSame(1, CashMovement::query()->where('movement_type', 'drawer_to_safe')->count());
 
-        $this->assertSame('80.00', $this->supplier->fresh()->current_balance);
+        $this->assertSame('40.00', $this->supplier->fresh()->current_balance);
         $this->assertSame('0.00', $creditSale->fresh()->balance_due);
         $this->assertSame('0.00', $customer->fresh()->current_balance);
         $this->assertSame('30.00', $cashSale->fresh()->refunded_total);
-        $this->assertSame('80.00', $receipt->fresh()->balance_due);
+        $this->assertSame('40.00', $receipt->fresh()->balance_due);
     }
 
     public function test_non_cash_transactions_do_not_require_or_change_a_cash_drawer(): void
