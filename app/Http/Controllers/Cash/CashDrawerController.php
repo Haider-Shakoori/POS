@@ -28,7 +28,6 @@ class CashDrawerController extends Controller
         if ($shift) {
             $shift->load([
                 'cashMovements' => fn ($query) => $query
-                    ->latest('occurred_at')
                     ->latest('id')
                     ->limit(100),
             ]);
