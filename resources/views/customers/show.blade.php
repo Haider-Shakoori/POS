@@ -17,7 +17,7 @@
         <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.current_balance') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($customer->current_balance) }}</div></div>
         <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.credit_limit') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($customer->credit_limit) }}</div></div>
         <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.opening_balance') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($customer->opening_balance) }}</div></div>
-        <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.credit_available') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format(max(0,(float)$customer->credit_limit-(float)$customer->current_balance)) }}</div></div>
+        <div class="stat-card"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.credit_available') }}</div><div class="mt-2 text-xl font-black">{{ \App\Support\Money::format($availableCredit) }}</div></div>
     </div>
 
     @if(auth()->user()->hasPermission('customers.collect') && \App\Support\Decimal::isPositive($customer->current_balance))

@@ -59,6 +59,10 @@ return new class extends Migration
                 ->after('cashier_shift_id')
                 ->constrained()
                 ->nullOnDelete();
+            $table->timestamp('settlement_finalized_at')
+                ->nullable()
+                ->after('balance_due')
+                ->index();
 
             $table->index(['customer_id', 'balance_due'], 'sale_customer_balance_idx');
         });
@@ -129,6 +133,7 @@ return new class extends Migration
 
         Schema::table('sales', function (Blueprint $table) {
             $table->dropIndex('sale_customer_balance_idx');
+            $table->dropColumn('settlement_finalized_at');
             $table->dropConstrainedForeignId('customer_id');
         });
 

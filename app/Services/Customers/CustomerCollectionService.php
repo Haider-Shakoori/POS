@@ -78,6 +78,12 @@ class CustomerCollectionService
                 }
 
                 $change = Decimal::subtract($tendered, $amount, 2);
+            } elseif (isset($data['tendered_amount']) && $data['tendered_amount'] !== null) {
+                $tendered = Decimal::normalize($data['tendered_amount'], 2);
+
+                if (Decimal::compare($tendered, $amount) !== 0) {
+                    throw new DomainException('Non-cash tendered amount must equal the collection amount.');
+                }
             }
 
             $collection = CustomerCollection::create([

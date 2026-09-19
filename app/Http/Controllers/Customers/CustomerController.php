@@ -74,8 +74,15 @@ class CustomerController extends Controller
             'collections' => fn ($query) => $query->latest('collected_at')->limit(25),
         ]);
 
+        $availableCredit = Decimal::subtract(
+            $customer->credit_limit,
+            $customer->current_balance,
+            2,
+        );
+
         return view('customers.show', [
             'customer' => $customer,
+            'availableCredit' => Decimal::isNegative($availableCredit) ? '0.00' : $availableCredit,
             'paymentMethods' => PaymentMethod::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')

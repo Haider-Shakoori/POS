@@ -32,6 +32,8 @@ class PaymentSettlementService
             $lockedSale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
 
             if ($lockedSale->settlement_finalized_at) {
+                $this->assertRetryMatches($lockedSale, $payments, $customer);
+
                 return $lockedSale->fresh(['customer', 'payments.paymentMethod']);
             }
 
@@ -55,7 +57,7 @@ class PaymentSettlementService
                 throw new DomainException('The sale customer could not be resolved.');
             }
 
-            $prepared = $this->preparePayments($payments, $lockedSale);
+            $prepared = $this->preparePayments($payments);
             $paidTotal = '0.00';
 
             foreach ($prepared as $payment) {
@@ -160,7 +162,40 @@ class PaymentSettlementService
         });
     }
 
-    private function preparePayments(array $payments, Sale $sale): array
+    private function assertRetryMatches(Sale $sale, array $payments, ?Customer $customer): void
+    {
+        $requestedCustomerId = $customer?->id;
+
+        if (($sale->customer_id ? (int) $sale->customer_id : null) !== ($requestedCustomerId ? (int) $requestedCustomerId : null)) {
+            throw new DomainException('The checkout idempotency key is already bound to another customer selection.');
+        }
+
+        $prepared = $this->preparePayments($payments);
+        $existing = SalePayment::query()
+            ->with('paymentMethod')
+            ->where('sale_id', $sale->id)
+            ->where('source_type', 'checkout')
+            ->orderBy('id')
+            ->get();
+
+        if ($existing->count() !== count($prepared)) {
+            throw new DomainException('The checkout idempotency key is already bound to another payment set.');
+        }
+
+        foreach ($prepared as $index => $payment) {
+            $recorded = $existing[$index];
+
+            if (
+                (int) $recorded->payment_method_id !== (int) $payment['method']->id
+                || Decimal::compare($recorded->applied_amount, $payment['applied_amount']) !== 0
+                || Decimal::compare($recorded->change_amount, $payment['change_amount']) !== 0
+            ) {
+                throw new DomainException('The checkout idempotency key is already bound to another payment set.');
+            }
+        }
+    }
+
+    private function preparePayments(array $payments): array
     {
         $prepared = [];
 
