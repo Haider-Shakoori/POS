@@ -112,6 +112,6 @@ class ShiftOpeningService
             );
 
             return $shift->fresh('terminal');
-        });
+        }, 3);
     }
 }
