@@ -1,20 +1,20 @@
 # Production Readiness — Batch 14
 
-Status: **IN PROGRESS**
+Status: **READY**
 
 ## Release gates
 
-- [ ] Full SQLite PHP suite passes.
-- [ ] Full MySQL 8.4 PHP suite passes.
-- [ ] MySQL `migrate:fresh --seed --force` passes.
-- [ ] Frontend production build passes.
-- [ ] Laravel config, route and view caches build successfully.
-- [ ] Composer dependency audit has no blocking advisories.
-- [ ] npm high-severity dependency audit has no blocking advisories.
-- [ ] Cross-module golden-path shop day reconciles stock, cash, receivables, payables, profit and daily closing.
-- [ ] `composer.lock` is committed.
-- [ ] `package-lock.json` is committed.
-- [ ] Batch 14 CI is green on the final locked dependency set.
+- [x] Full SQLite PHP suite passes.
+- [x] Full MySQL 8.4 PHP suite passes.
+- [x] MySQL `migrate:fresh --seed --force` passes.
+- [x] Frontend production build passes.
+- [x] Laravel config, route and view caches build successfully.
+- [x] Composer dependency audit has no blocking advisories.
+- [x] npm high-severity dependency audit has no blocking advisories.
+- [x] Cross-module golden-path shop day reconciles stock, cash, receivables, payables, profit and daily closing.
+- [x] `composer.lock` is committed.
+- [x] `package-lock.json` is committed.
+- [x] Batch 14 CI is green on the final locked dependency set.
 
 ## Golden path
 
@@ -45,6 +45,19 @@ Production deployment must use HTTPS, `APP_ENV=production`, `APP_DEBUG=false`, a
 
 Run migrations with a database backup and maintenance/traffic-control plan appropriate for the shop. Never replace the production database with `migrate:fresh`.
 
+## Verified release candidate
+
+POS CI #80 passed on the committed dependency lockfiles:
+
+- SQLite: 107 tests passed / 689 assertions.
+- MySQL 8.4: 107 tests passed / 689 assertions.
+- MySQL fresh migration and seeding: passed.
+- Frontend production build: passed.
+- Laravel config, route and view cache warm-up: passed.
+- Composer dependency audit: passed.
+- npm high-severity dependency audit: passed.
+- Final golden-path reconciliation: passed on both database engines.
+
 ## Release decision
 
-Batch 14 is not marked complete until all release gates above pass. Any failed financial reconciliation, migration, production-cache build, dependency audit, or production-database test is a release blocker.
+**READY at repository/application level.** The codebase has passed the Batch 14 release gates. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
