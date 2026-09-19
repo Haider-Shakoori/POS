@@ -22,6 +22,8 @@
 }
 
 @layer base {
+    [x-cloak] { display: none !important; }
+
     html {
         @apply bg-slate-50 text-slate-950 antialiased;
     }

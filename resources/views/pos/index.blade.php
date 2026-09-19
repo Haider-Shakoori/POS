@@ -8,13 +8,21 @@
     x-data="posWorkspace({
         searchUrl: @js(route('pos.products.search')),
         saleUrl: @js(route('pos.sales.store')),
+        customerSearchUrl: @js(route('customers.search')),
+        customerStoreUrl: @js(route('customers.store')),
         csrf: @js(csrf_token()),
         canDiscount: @js($canDiscount),
+        canCredit: @js($canCredit),
+        canManageCustomers: @js($canManageCustomers),
+        paymentMethods: @js($paymentMethods),
         currency: '؋',
         labels: {
             searchFailed: @js(__('ui.pos_search_failed')),
             saleFailed: @js(__('ui.sale_failed')),
             saleCompleted: @js(__('ui.sale_completed')),
+            customerSearchFailed: @js(__('ui.customer_search_failed')),
+            customerCreateFailed: @js(__('ui.customer_create_failed')),
+            customerRequired: @js(__('ui.customer_required_for_credit')),
         }
     })"
     x-init="$nextTick(() => $refs.search.focus())"
@@ -46,7 +54,10 @@
 
         <div x-show="lastSale" class="m-4 mb-0 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <div><strong x-text="lastSale?.number"></strong> · {{ __('ui.sale_completed') }}</div>
+                <div>
+                    <strong x-text="lastSale?.number"></strong> · {{ __('ui.sale_completed') }}
+                    <span class="ms-2" x-text="lastSale ? money(lastSale.paid_amount) : ''"></span>
+                </div>
                 <a :href="lastSale?.url" class="font-bold underline">{{ __('ui.view_sale') }}</a>
             </div>
         </div>
@@ -94,7 +105,7 @@
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h3 class="font-black">{{ __('ui.current_sale') }}</h3>
-                    <div class="mt-1 text-xs text-slate-500">{{ __('ui.walk_in_customer') }}</div>
+                    <div class="mt-1 text-xs text-slate-500" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></div>
                 </div>
                 <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800"><span x-text="cart.length"></span> {{ __('ui.items') }}</span>
             </div>
@@ -140,13 +151,150 @@
             <div class="flex justify-between text-sm"><span>{{ __('ui.discount') }}</span><strong x-text="money(totalDiscount())"></strong></div>
             <div class="flex justify-between border-t border-slate-200 pt-3 text-xl dark:border-slate-800"><span class="font-black">{{ __('ui.total') }}</span><strong x-text="money(total())"></strong></div>
 
-            <button class="btn-primary w-full py-3.5" type="button" @click="completeSale()" :disabled="!cart.length || submitting">
-                <span x-show="!submitting">{{ __('ui.complete_sale') }}</span>
-                <span x-show="submitting">{{ __('ui.posting_sale') }}</span>
+            <button class="btn-primary w-full py-3.5" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
+                {{ __('ui.pay_and_complete') }}
             </button>
-            <p class="text-xs leading-5 text-slate-500">{{ __('ui.payment_next_batch_notice') }}</p>
+            <p class="text-xs leading-5 text-slate-500">{{ __('ui.payment_server_notice') }}</p>
         </div>
     </aside>
+
+    <div
+        x-cloak
+        x-show="paymentOpen"
+        x-transition.opacity
+        class="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
+        @keydown.escape.window="if(!submitting) paymentOpen=false"
+    >
+        <div class="mx-auto my-4 grid max-w-6xl gap-4 xl:grid-cols-[1fr_24rem]" @click.outside="if(!submitting) paymentOpen=false">
+            <section class="panel overflow-hidden">
+                <div class="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
+                    <div>
+                        <h3 class="text-xl font-black">{{ __('ui.checkout_payment') }}</h3>
+                        <p class="mt-1 text-xs text-slate-500">{{ __('ui.checkout_payment_help') }}</p>
+                    </div>
+                    <button class="btn-secondary px-3" type="button" @click="paymentOpen=false" :disabled="submitting">×</button>
+                </div>
+
+                <div class="space-y-5 p-5">
+                    <div>
+                        <div class="flex items-center justify-between gap-3">
+                            <label class="text-sm font-bold">{{ __('ui.customer') }}</label>
+                            <button x-show="selectedCustomer" class="text-xs font-bold text-red-600" type="button" @click="clearCustomer()">{{ __('ui.remove_customer') }}</button>
+                        </div>
+
+                        <div x-show="selectedCustomer" class="mt-2 rounded-xl border border-brand-200 bg-brand-50 p-3 dark:border-brand-900 dark:bg-brand-950/30">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <div class="font-bold" x-text="selectedCustomer?.name"></div>
+                                    <div class="mt-1 text-xs text-slate-500" x-text="selectedCustomer?.phone || '—'"></div>
+                                </div>
+                                <div class="text-end text-xs">
+                                    <div>{{ __('ui.current_balance') }}: <strong x-text="money(selectedCustomer?.current_balance)"></strong></div>
+                                    <div class="mt-1">{{ __('ui.credit_available') }}: <strong x-text="money(selectedCustomer?.available_credit)"></strong></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="!selectedCustomer" class="mt-2">
+                            <div class="flex gap-2">
+                                <input class="field" x-model="customerQuery" @input.debounce.250ms="searchCustomers()" placeholder="{{ __('ui.search_customer_pos') }}">
+                                <button x-show="canManageCustomers" class="btn-secondary shrink-0" type="button" @click="customerCreateOpen=!customerCreateOpen">＋</button>
+                            </div>
+
+                            <div x-show="customerResults.length" class="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                                <template x-for="customer in customerResults" :key="customer.id">
+                                    <button type="button" class="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-start last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" @click="selectCustomer(customer)">
+                                        <div>
+                                            <div class="font-semibold" x-text="customer.name"></div>
+                                            <div class="mt-1 text-xs text-slate-500" x-text="customer.phone || '—'"></div>
+                                        </div>
+                                        <div class="text-end text-xs text-slate-500">{{ __('ui.balance') }} <strong x-text="money(customer.current_balance)"></strong></div>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div x-show="customerCreateOpen && canManageCustomers" class="mt-3 grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700 sm:grid-cols-3">
+                            <input class="field" x-model="newCustomer.name" placeholder="{{ __('ui.customer_name') }}">
+                            <input class="field" x-model="newCustomer.phone" placeholder="{{ __('ui.phone') }}">
+                            <input class="field" x-model="newCustomer.credit_limit" inputmode="decimal" placeholder="{{ __('ui.credit_limit') }}">
+                            <button class="btn-secondary sm:col-span-3" type="button" @click="createCustomer()" :disabled="customerCreating">
+                                <span x-show="!customerCreating">{{ __('ui.quick_create_customer') }}</span>
+                                <span x-show="customerCreating">{{ __('ui.creating') }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mb-3 flex items-center justify-between">
+                            <div>
+                                <h4 class="font-black">{{ __('ui.payments') }}</h4>
+                                <p class="mt-1 text-xs text-slate-500">{{ __('ui.split_payment_help') }}</p>
+                            </div>
+                            <button class="btn-secondary" type="button" @click="addPayment()">{{ __('ui.add_payment') }}</button>
+                        </div>
+
+                        <div class="space-y-3">
+                            <template x-for="(payment,index) in payments" :key="payment.key">
+                                <div class="grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700 md:grid-cols-[1.1fr_1fr_1fr_auto]">
+                                    <select class="field" x-model="payment.payment_method_id" @change="paymentMethodChanged(index)">
+                                        <template x-for="method in paymentMethods" :key="method.id">
+                                            <option :value="String(method.id)" x-text="method.name"></option>
+                                        </template>
+                                    </select>
+                                    <div>
+                                        <label class="mb-1 block text-[11px] font-semibold text-slate-500">{{ __('ui.applied_amount') }}</label>
+                                        <input class="field" x-model="payment.amount" @input="paymentAmountChanged(index)" inputmode="decimal">
+                                    </div>
+                                    <div x-show="isCashPayment(payment)">
+                                        <label class="mb-1 block text-[11px] font-semibold text-slate-500">{{ __('ui.cash_tendered') }}</label>
+                                        <input class="field" x-model="payment.tendered_amount" inputmode="decimal">
+                                    </div>
+                                    <div x-show="!isCashPayment(payment)">
+                                        <label class="mb-1 block text-[11px] font-semibold text-slate-500">{{ __('ui.payment_reference') }}</label>
+                                        <input class="field" x-model="payment.reference">
+                                    </div>
+                                    <button type="button" class="self-end rounded-xl px-3 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" @click="removePayment(index)">×</button>
+                                    <div x-show="isCashPayment(payment) && paymentChange(payment) > 0" class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 md:col-span-4">
+                                        {{ __('ui.change') }}: <span x-text="money(paymentChange(payment))"></span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div x-show="!payments.length" class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400 dark:border-slate-700">
+                                {{ __('ui.no_payment_credit_sale') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="panel h-fit p-5 xl:sticky xl:top-4">
+                <div class="space-y-3">
+                    <div class="flex justify-between text-sm"><span>{{ __('ui.total') }}</span><strong x-text="money(total())"></strong></div>
+                    <div class="flex justify-between text-sm"><span>{{ __('ui.payment_applied') }}</span><strong x-text="money(paymentAppliedTotal())"></strong></div>
+                    <div class="flex justify-between text-sm text-emerald-700 dark:text-emerald-300"><span>{{ __('ui.change') }}</span><strong x-text="money(totalChange())"></strong></div>
+                    <div class="flex justify-between border-t border-slate-200 pt-3 text-lg dark:border-slate-800">
+                        <span class="font-black">{{ __('ui.credit_balance') }}</span>
+                        <strong x-text="money(creditBalance())"></strong>
+                    </div>
+                </div>
+
+                <div x-show="creditBalance() > 0" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+                    {{ __('ui.credit_customer_notice') }}
+                </div>
+
+                <button x-show="canCredit && selectedCustomer" class="btn-secondary mt-4 w-full" type="button" @click="payments=[]">
+                    {{ __('ui.make_full_credit') }}
+                </button>
+
+                <button class="btn-primary mt-4 w-full py-3.5" type="button" @click="completeSale()" :disabled="submitting">
+                    <span x-show="!submitting">{{ __('ui.confirm_checkout') }}</span>
+                    <span x-show="submitting">{{ __('ui.posting_sale') }}</span>
+                </button>
+            </aside>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -162,6 +310,17 @@ function posWorkspace(config) {
         lastSale: null,
         saleKey: null,
         canDiscount: config.canDiscount,
+        canCredit: config.canCredit,
+        canManageCustomers: config.canManageCustomers,
+        paymentMethods: config.paymentMethods || [],
+        paymentOpen: false,
+        payments: [],
+        selectedCustomer: null,
+        customerQuery: '',
+        customerResults: [],
+        customerCreateOpen: false,
+        customerCreating: false,
+        newCustomer: {name: '', phone: '', credit_limit: '0.00'},
 
         init() {
             this.resetSaleKey();
@@ -224,11 +383,7 @@ function posWorkspace(config) {
             if (existing) {
                 existing.quantity = String(Number(existing.quantity || 0) + 1);
             } else {
-                this.cart.push({
-                    ...product,
-                    quantity: '1',
-                    line_discount_amount: '0.00',
-                });
+                this.cart.push({...product, quantity: '1', line_discount_amount: '0.00'});
             }
 
             this.clearSearch();
@@ -294,8 +449,181 @@ function posWorkspace(config) {
             return Number(value).toLocaleString(undefined, {maximumFractionDigits: 6});
         },
 
+        openSettlement() {
+            if (!this.cart.length) return;
+
+            this.message = '';
+            this.paymentOpen = true;
+
+            if (!this.payments.length) {
+                this.resetDefaultPayment();
+            }
+        },
+
+        resetDefaultPayment() {
+            const cash = this.paymentMethods.find(method => method.code === 'cash') || this.paymentMethods[0];
+
+            if (!cash) {
+                this.payments = [];
+                return;
+            }
+
+            const amount = this.total().toFixed(2);
+            this.payments = [{
+                key: crypto.randomUUID(),
+                payment_method_id: String(cash.id),
+                amount,
+                tendered_amount: cash.is_cash ? amount : '',
+                reference: '',
+            }];
+        },
+
+        addPayment() {
+            const method = this.paymentMethods[0];
+            if (!method) return;
+
+            const remaining = Math.max(0, this.total() - this.paymentAppliedTotal());
+            this.payments.push({
+                key: crypto.randomUUID(),
+                payment_method_id: String(method.id),
+                amount: remaining.toFixed(2),
+                tendered_amount: method.is_cash ? remaining.toFixed(2) : '',
+                reference: '',
+            });
+        },
+
+        removePayment(index) {
+            this.payments.splice(index, 1);
+        },
+
+        methodFor(payment) {
+            return this.paymentMethods.find(method => String(method.id) === String(payment.payment_method_id));
+        },
+
+        isCashPayment(payment) {
+            return Boolean(this.methodFor(payment)?.is_cash);
+        },
+
+        paymentMethodChanged(index) {
+            const payment = this.payments[index];
+
+            if (this.isCashPayment(payment)) {
+                payment.tendered_amount = payment.amount || '0.00';
+                payment.reference = '';
+            } else {
+                payment.tendered_amount = '';
+            }
+        },
+
+        paymentAmountChanged(index) {
+            const payment = this.payments[index];
+
+            if (this.isCashPayment(payment) && (!payment.tendered_amount || Number(payment.tendered_amount) < Number(payment.amount || 0))) {
+                payment.tendered_amount = payment.amount || '0.00';
+            }
+        },
+
+        paymentAppliedTotal() {
+            return this.payments.reduce((sum, payment) => sum + Math.max(0, Number(payment.amount || 0)), 0);
+        },
+
+        creditBalance() {
+            return Math.max(0, this.total() - this.paymentAppliedTotal());
+        },
+
+        paymentChange(payment) {
+            if (!this.isCashPayment(payment)) return 0;
+            return Math.max(0, Number(payment.tendered_amount || 0) - Number(payment.amount || 0));
+        },
+
+        totalChange() {
+            return this.payments.reduce((sum, payment) => sum + this.paymentChange(payment), 0);
+        },
+
+        async searchCustomers() {
+            const term = this.customerQuery.trim();
+
+            if (!term) {
+                this.customerResults = [];
+                return;
+            }
+
+            try {
+                const response = await fetch(config.customerSearchUrl + '?q=' + encodeURIComponent(term), {
+                    headers: {'Accept': 'application/json'}
+                });
+
+                if (!response.ok) throw new Error(config.labels.customerSearchFailed);
+
+                const payload = await response.json();
+                this.customerResults = payload.data || [];
+            } catch (error) {
+                this.customerResults = [];
+                this.message = error.message || config.labels.customerSearchFailed;
+            }
+        },
+
+        selectCustomer(customer) {
+            this.selectedCustomer = customer;
+            this.customerQuery = '';
+            this.customerResults = [];
+        },
+
+        clearCustomer() {
+            this.selectedCustomer = null;
+            this.customerQuery = '';
+            this.customerResults = [];
+        },
+
+        async createCustomer() {
+            if (!this.canManageCustomers || !this.newCustomer.name.trim() || this.customerCreating) return;
+
+            this.customerCreating = true;
+            this.message = '';
+
+            try {
+                const response = await fetch(config.customerStoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': config.csrf,
+                    },
+                    body: JSON.stringify({
+                        name: this.newCustomer.name.trim(),
+                        phone: this.newCustomer.phone || null,
+                        credit_limit: this.newCustomer.credit_limit || '0.00',
+                        opening_balance: '0.00',
+                    }),
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    const validation = payload.errors ? Object.values(payload.errors).flat().join(' ') : payload.message;
+                    throw new Error(validation || config.labels.customerCreateFailed);
+                }
+
+                this.selectedCustomer = {
+                    ...payload.customer,
+                    available_credit: String(Math.max(0, Number(payload.customer.credit_limit) - Number(payload.customer.current_balance)).toFixed(2)),
+                };
+                this.newCustomer = {name: '', phone: '', credit_limit: '0.00'};
+                this.customerCreateOpen = false;
+            } catch (error) {
+                this.message = error.message || config.labels.customerCreateFailed;
+            } finally {
+                this.customerCreating = false;
+            }
+        },
+
         async completeSale() {
             if (!this.cart.length || this.submitting) return;
+
+            if (this.creditBalance() > 0 && !this.selectedCustomer) {
+                this.message = config.labels.customerRequired;
+                return;
+            }
 
             this.submitting = true;
             this.message = '';
@@ -311,27 +639,39 @@ function posWorkspace(config) {
                     },
                     body: JSON.stringify({
                         idempotency_key: this.saleKey,
+                        customer_id: this.selectedCustomer?.id || null,
                         sale_discount_amount: this.canDiscount ? String(this.saleDiscount || '0') : '0',
                         items: this.cart.map(item => ({
                             product_unit_id: item.product_unit_id,
                             quantity: String(item.quantity),
                             line_discount_amount: this.canDiscount ? String(item.line_discount_amount || '0') : '0',
                         })),
+                        payments: this.payments
+                            .filter(payment => Number(payment.amount || 0) > 0)
+                            .map(payment => ({
+                                payment_method_id: Number(payment.payment_method_id),
+                                amount: String(payment.amount),
+                                tendered_amount: this.isCashPayment(payment) ? String(payment.tendered_amount || payment.amount) : null,
+                                reference: payment.reference || null,
+                            })),
                     }),
                 });
 
                 const payload = await response.json();
 
                 if (!response.ok) {
-                    const validation = payload.errors
-                        ? Object.values(payload.errors).flat().join(' ')
-                        : payload.message;
+                    const validation = payload.errors ? Object.values(payload.errors).flat().join(' ') : payload.message;
                     throw new Error(validation || config.labels.saleFailed);
                 }
 
                 this.lastSale = payload.sale;
                 this.cart = [];
                 this.saleDiscount = '0.00';
+                this.paymentOpen = false;
+                this.payments = [];
+                this.selectedCustomer = null;
+                this.customerQuery = '';
+                this.customerResults = [];
                 this.message = '';
                 this.resetSaleKey();
                 this.$nextTick(() => this.$refs.search.focus());
