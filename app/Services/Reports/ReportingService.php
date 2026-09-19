@@ -71,6 +71,23 @@ class ReportingService
             $query->where('sales.customer_id', (int) $filters['customer_id']);
         }
 
+        if (! empty($filters['product_id']) || ! empty($filters['category_id'])) {
+            $query->whereExists(function (Builder $subquery) use ($filters): void {
+                $subquery->selectRaw('1')
+                    ->from('sale_items')
+                    ->join('products', 'products.id', '=', 'sale_items.product_id')
+                    ->whereColumn('sale_items.sale_id', 'sales.id');
+
+                if (! empty($filters['product_id'])) {
+                    $subquery->where('sale_items.product_id', (int) $filters['product_id']);
+                }
+
+                if (! empty($filters['category_id'])) {
+                    $subquery->where('products.category_id', (int) $filters['category_id']);
+                }
+            });
+        }
+
         return $query->get();
     }
 
@@ -100,14 +117,44 @@ class ReportingService
             });
         }
 
-        $sales = (clone $salesQuery)
-            ->selectRaw('COUNT(*) as count')
-            ->selectRaw('COALESCE(SUM(subtotal),0) as subtotal')
-            ->selectRaw('COALESCE(SUM(line_discount_total),0) as line_discount')
-            ->selectRaw('COALESCE(SUM(sale_discount_amount),0) as sale_discount')
-            ->selectRaw('COALESCE(SUM(net_total),0) as net_total')
-            ->selectRaw('COALESCE(SUM(cogs_total),0) as cogs')
-            ->first();
+        $itemFiltered = ! empty($filters['product_id']) || ! empty($filters['category_id']);
+
+        if ($itemFiltered) {
+            $salesItemsQuery = DB::table('sale_items')
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()]);
+
+            if (! empty($filters['customer_id'])) {
+                $salesItemsQuery->where('sales.customer_id', (int) $filters['customer_id']);
+            }
+
+            if (! empty($filters['product_id'])) {
+                $salesItemsQuery->where('sale_items.product_id', (int) $filters['product_id']);
+            }
+
+            if (! empty($filters['category_id'])) {
+                $salesItemsQuery->where('products.category_id', (int) $filters['category_id']);
+            }
+
+            $sales = $salesItemsQuery
+                ->selectRaw('COUNT(DISTINCT sales.id) as count')
+                ->selectRaw('COALESCE(SUM(sale_items.line_subtotal),0) as subtotal')
+                ->selectRaw('COALESCE(SUM(sale_items.line_discount_amount),0) as line_discount')
+                ->selectRaw('COALESCE(SUM(sale_items.allocated_sale_discount),0) as sale_discount')
+                ->selectRaw('COALESCE(SUM(sale_items.line_net_total),0) as net_total')
+                ->selectRaw('COALESCE(SUM(sale_items.cogs_amount),0) as cogs')
+                ->first();
+        } else {
+            $sales = (clone $salesQuery)
+                ->selectRaw('COUNT(*) as count')
+                ->selectRaw('COALESCE(SUM(subtotal),0) as subtotal')
+                ->selectRaw('COALESCE(SUM(line_discount_total),0) as line_discount')
+                ->selectRaw('COALESCE(SUM(sale_discount_amount),0) as sale_discount')
+                ->selectRaw('COALESCE(SUM(net_total),0) as net_total')
+                ->selectRaw('COALESCE(SUM(cogs_total),0) as cogs')
+                ->first();
+        }
 
         $returnsQuery = DB::table('sale_returns')
             ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
@@ -135,10 +182,36 @@ class ReportingService
             });
         }
 
-        $returns = $returnsQuery
-            ->selectRaw('COALESCE(SUM(sale_returns.return_total),0) as return_total')
-            ->selectRaw('COALESCE(SUM(sale_returns.cogs_reversed),0) as cogs_reversed')
-            ->first();
+        if ($itemFiltered) {
+            $returnsItemsQuery = DB::table('sale_return_items')
+                ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->join('sales', 'sales.id', '=', 'sale_returns.sale_id')
+                ->join('sale_items', 'sale_items.id', '=', 'sale_return_items.sale_item_id')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereBetween('sale_returns.posted_at', [$from->startOfDay(), $to->endOfDay()]);
+
+            if (! empty($filters['customer_id'])) {
+                $returnsItemsQuery->where('sales.customer_id', (int) $filters['customer_id']);
+            }
+
+            if (! empty($filters['product_id'])) {
+                $returnsItemsQuery->where('sale_items.product_id', (int) $filters['product_id']);
+            }
+
+            if (! empty($filters['category_id'])) {
+                $returnsItemsQuery->where('products.category_id', (int) $filters['category_id']);
+            }
+
+            $returns = $returnsItemsQuery
+                ->selectRaw('COALESCE(SUM(sale_return_items.return_amount),0) as return_total')
+                ->selectRaw('COALESCE(SUM(sale_return_items.cogs_amount),0) as cogs_reversed')
+                ->first();
+        } else {
+            $returns = $returnsQuery
+                ->selectRaw('COALESCE(SUM(sale_returns.return_total),0) as return_total')
+                ->selectRaw('COALESCE(SUM(sale_returns.cogs_reversed),0) as cogs_reversed')
+                ->first();
+        }
 
         $salesNet = Decimal::normalize((string) ($sales->net_total ?? 0), 2);
         $returnTotal = Decimal::normalize((string) ($returns->return_total ?? 0), 2);
@@ -321,8 +394,13 @@ class ReportingService
             ->keyBy('id');
 
         $ids = $sales->keys()->merge($returns->keys())->unique();
+        $productFallbacks = Product::query()
+            ->with('category')
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
 
-        return $ids->map(function ($id) use ($sales, $returns): object {
+        return $ids->map(function ($id) use ($sales, $returns, $productFallbacks): object {
             $sale = $sales->get($id);
             $return = $returns->get($id);
 
@@ -338,15 +416,17 @@ class ReportingService
             $returnedCogs = Decimal::normalize((string) ($return->returned_cogs ?? 0), 2);
             $netCogs = Decimal::subtract($soldCogs, $returnedCogs, 2);
 
+            $fallback = $productFallbacks->get($id);
+
             return (object) [
                 'id' => (int) $id,
-                'sku' => $sale->sku ?? Product::query()->whereKey($id)->value('sku'),
-                'name_en' => $sale->name_en ?? Product::query()->whereKey($id)->value('name_en'),
-                'name_fa' => $sale->name_fa ?? Product::query()->whereKey($id)->value('name_fa'),
-                'name_ps' => $sale->name_ps ?? Product::query()->whereKey($id)->value('name_ps'),
-                'category_name_en' => $sale->category_name_en ?? null,
-                'category_name_fa' => $sale->category_name_fa ?? null,
-                'category_name_ps' => $sale->category_name_ps ?? null,
+                'sku' => $sale->sku ?? $fallback?->sku,
+                'name_en' => $sale->name_en ?? $fallback?->name_en,
+                'name_fa' => $sale->name_fa ?? $fallback?->name_fa,
+                'name_ps' => $sale->name_ps ?? $fallback?->name_ps,
+                'category_name_en' => $sale->category_name_en ?? $fallback?->category?->name_en,
+                'category_name_fa' => $sale->category_name_fa ?? $fallback?->category?->name_fa,
+                'category_name_ps' => $sale->category_name_ps ?? $fallback?->category?->name_ps,
                 'quantity_base' => $netQty,
                 'net_sales' => $netSales,
                 'cogs' => $netCogs,
