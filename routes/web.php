@@ -18,6 +18,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\InventoryOperationsController;
+use App\Http\Controllers\Inventory\InventoryTargetSearchController;
 use App\Http\Controllers\Inventory\InventoryWriteoffController;
 use App\Http\Controllers\Inventory\StockCountController;
 use App\Http\Controllers\Inventory\ProductController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Purchasing\PurchaseReturnController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\SupplierPaymentController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\Reports\ReportLookupController;
 use App\Http\Controllers\Sales\HeldSaleController;
 use App\Http\Controllers\Sales\PosController;
 use App\Http\Controllers\Sales\ProductSearchController;
@@ -123,6 +125,10 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/lookups/{type}', ReportLookupController::class)
+            ->whereIn('type', ['product', 'category', 'customer', 'supplier'])
+            ->middleware('throttle:120,1')
+            ->name('lookup');
         Route::get('/sales.csv', [ReportController::class, 'salesCsv'])
             ->middleware('throttle:30,1')
             ->name('sales-csv');
@@ -166,6 +172,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/operations', InventoryOperationsController::class)
             ->middleware('permission:inventory.view')
             ->name('operations.index');
+        Route::get('/operations/targets/search', InventoryTargetSearchController::class)
+            ->middleware(['permission:inventory.view', 'throttle:120,1'])
+            ->name('operations.targets.search');
         Route::post('/stock-counts', [StockCountController::class, 'store'])
             ->middleware('permission:inventory.count')
             ->name('stock-counts.store');

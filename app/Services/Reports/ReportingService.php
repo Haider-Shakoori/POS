@@ -586,7 +586,9 @@ class ReportingService
             ->selectRaw('COUNT(sales.id) as sales_count')
             ->selectRaw('COALESCE(SUM(sales.net_total),0) as sales_total')
             ->groupBy('customers.id','customers.name','customers.phone','customers.current_balance')
-            ->orderByDesc('sales_total');
+            ->orderByDesc('sales_total')
+            ->orderBy('customers.name')
+            ->orderBy('customers.id');
 
         if (! empty($filters['customer_id'])) {
             $query->where('customers.id', (int) $filters['customer_id']);
@@ -606,7 +608,9 @@ class ReportingService
             ->selectRaw('COUNT(goods_receipts.id) as receipt_count')
             ->selectRaw('COALESCE(SUM(goods_receipts.net_total),0) as purchases_total')
             ->groupBy('suppliers.id','suppliers.name','suppliers.phone','suppliers.current_balance')
-            ->orderByDesc('purchases_total');
+            ->orderByDesc('purchases_total')
+            ->orderBy('suppliers.name')
+            ->orderBy('suppliers.id');
 
         if (! empty($filters['supplier_id'])) {
             $query->where('suppliers.id', (int) $filters['supplier_id']);

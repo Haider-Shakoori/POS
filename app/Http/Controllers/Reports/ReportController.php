@@ -4,10 +4,7 @@ namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\ReportFilterRequest;
-use App\Models\Category;
-use App\Models\Customer;
-use App\Models\Product;
-use App\Models\Supplier;
+use App\Services\Lookups\ReportLookupService;
 use App\Services\Reports\ReportingService;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -17,13 +14,13 @@ class ReportController extends Controller
     public function index(
         ReportFilterRequest $request,
         ReportingService $reports,
+        ReportLookupService $lookups,
     ): View {
+        $filters = $request->validated();
+
         return view('reports.index', [
-            'report' => $reports->build($request->validated()),
-            'products' => Product::query()->where('is_active', true)->orderBy('name_en')->get(['id','name_en','name_fa','name_ps']),
-            'categories' => Category::query()->where('is_active', true)->orderBy('name_en')->get(['id','name_en','name_fa','name_ps']),
-            'customers' => Customer::query()->where('is_active', true)->orderBy('name')->get(['id','name']),
-            'suppliers' => Supplier::query()->where('is_active', true)->orderBy('name')->get(['id','name']),
+            'report' => $reports->build($filters),
+            'selectedFilters' => $lookups->selected($filters),
             'canViewProfit' => $request->user()->hasPermission('reports.profit'),
         ]);
     }

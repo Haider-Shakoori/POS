@@ -308,3 +308,16 @@ Batch 15 closes the post-roadmap operational surface without changing financial-
 - Role/permission relationships are loaded once per authenticated User instance and reused for repeated authorization checks during the same request, reducing navigation/layout query overhead.
 - The application shell groups operational, insight and administration navigation consistently across English, Dari and Pashto while preserving RTL behavior.
 - Batch 15 validation: 112 tests / 712 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.
+
+## Large-dataset lookup boundary
+
+Batch 16 introduces a bounded lookup boundary for high-cardinality operational selectors:
+
+- Report filters resolve only the currently selected entity on initial render and retrieve matching products, categories, customers or suppliers on demand.
+- Inventory stock-count and write-off forms retrieve matching product/batch targets on demand instead of serializing the full tracked inventory into Alpine state.
+- Lookup responses are throttled, capped, permission-protected and use prefix-oriented indexed search.
+- Expiry and reorder monitoring use database filtering/counting and independent pagination; totals no longer require loading full collections into PHP.
+- Browser lookups debounce input and abort stale requests so rapid typing does not queue obsolete responses.
+- Customer and supplier activity reports use deterministic secondary ordering so tied aggregate totals render consistently across SQLite and MySQL.
+- Batch 16 validation: 115 tests / 740 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.
+

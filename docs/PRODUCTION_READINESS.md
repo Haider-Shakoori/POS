@@ -1,4 +1,4 @@
-# Production Readiness — Batch 15
+# Production Readiness — Batch 16
 
 Status: **READY**
 
@@ -19,6 +19,10 @@ Status: **READY**
 - [x] User/access management, audit-log viewing, terminal management, and dedicated operating-entry ledger are exposed through permission-protected UI.
 - [x] Repeated per-request role/permission checks reuse loaded authorization relationships.
 - [x] Final locked dependency CI is green.
+- [x] High-cardinality report and inventory selectors use bounded, throttled server-side lookup rather than full-catalog HTML/Alpine payloads.
+- [x] Reorder, expired-batch and expiring-batch operational monitoring is database-filtered and paginated.
+- [x] Large-dataset lookup/index migration passes MySQL 8.4 fresh migration/seed.
+- [x] Cross-database activity-report ordering is deterministic for tied totals.
 
 ## Golden path
 
@@ -51,10 +55,10 @@ Run migrations with a database backup and maintenance/traffic-control plan appro
 
 ## Verified release candidate
 
-Final Batch 15 CI passed on the committed dependency lockfiles:
+Final Batch 16 CI passed on the committed dependency lockfiles:
 
-- SQLite: 112 tests passed / 712 assertions.
-- MySQL 8.4: 112 tests passed / 712 assertions.
+- SQLite: 115 tests passed / 740 assertions.
+- MySQL 8.4: 115 tests passed / 740 assertions.
 - MySQL fresh migration and seeding: passed.
 - Frontend production build: passed.
 - Laravel config, route and view cache warm-up: passed.
@@ -64,4 +68,4 @@ Final Batch 15 CI passed on the committed dependency lockfiles:
 
 ## Release decision
 
-**READY at repository/application level.** The codebase has passed the Batch 15 release gates, including the unchanged Batch 14 financial golden path plus the operational-completeness, authorization-performance, and admin/UI regression coverage. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
+**READY at repository/application level.** The codebase has passed the Batch 16 release gates, including the unchanged financial golden path, operational/admin regression coverage, and large-dataset lookup/pagination coverage on both supported test databases. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
