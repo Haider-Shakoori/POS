@@ -11,123 +11,175 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-full bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-<div x-data="{ navOpen: false }" class="min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
-    <div x-show="navOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" @click="navOpen = false"></div>
+@php($currentUser = auth()->user())
+<div x-data="{ navOpen: false }" class="min-h-screen lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+    <div x-cloak x-show="navOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden" @click="navOpen = false"></div>
 
-    <aside :class="navOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'" class="fixed inset-y-0 start-0 z-50 w-72 border-e border-slate-200 bg-white transition-transform lg:sticky lg:top-0 lg:z-auto lg:block lg:h-screen lg:w-auto lg:translate-x-0 dark:border-slate-800 dark:bg-slate-900">
-        <div class="flex h-full flex-col p-4">
-            <div class="flex items-center justify-between gap-3 px-2 py-3">
-                <div class="flex min-w-0 items-center gap-3">
-                    <div class="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-600 text-lg font-black text-white">P</div>
+    <aside
+        :class="navOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'"
+        class="fixed inset-y-0 start-0 z-50 w-[17.5rem] border-e border-slate-200 bg-white/95 shadow-2xl shadow-slate-950/5 backdrop-blur transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:shadow-none dark:border-slate-800 dark:bg-slate-900/95"
+    >
+        <div class="flex h-full min-h-0 flex-col">
+            <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 dark:border-slate-800">
+                <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3">
+                    <div class="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-black text-white shadow-lg shadow-brand-600/20">P</div>
                     <div class="min-w-0">
-                        <div class="truncate text-sm font-bold">{{ $shop?->shop_name ?? config('app.name') }}</div>
-                        <div class="text-xs text-slate-500">{{ __('ui.afghanistan_pos') }}</div>
+                        <div class="truncate text-sm font-black">{{ $shop?->shop_name ?? config('app.name') }}</div>
+                        <div class="mt-0.5 truncate text-[11px] font-medium uppercase tracking-wider text-slate-400">{{ __('ui.afghanistan_pos') }}</div>
                     </div>
-                </div>
-                <button type="button" class="btn-secondary px-3 lg:hidden" @click="navOpen = false">×</button>
+                </a>
+                <button type="button" class="btn-icon lg:hidden" @click="navOpen = false" aria-label="{{ __('ui.close_navigation') }}">×</button>
             </div>
 
-            <nav class="mt-5 space-y-1">
-                <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'nav-link-active' : '' }}">
-                    <span class="text-lg">⌂</span><span>{{ __('ui.dashboard') }}</span>
-                </a>
-                @if(auth()->user()->hasPermission('pos.access'))
-                    <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">▦</span><span>{{ __('ui.point_of_sale') }}</span>
+            <nav class="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+                <div class="nav-group-title">{{ __('ui.workspace') }}</div>
+                <div class="space-y-1">
+                    <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'nav-link-active' : '' }}">
+                        <x-nav-icon name="dashboard" /><span>{{ __('ui.dashboard') }}</span>
                     </a>
+                    @if($currentUser->hasPermission('pos.access'))
+                        <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="pos" /><span>{{ __('ui.point_of_sale') }}</span>
+                        </a>
+                    @endif
+                </div>
+
+                <div class="nav-group-title mt-5">{{ __('ui.operations') }}</div>
+                <div class="space-y-1">
+                    @if($currentUser->hasPermission('sales.view'))
+                        <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="sales" /><span>{{ __('ui.sales') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('customers.view'))
+                        <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="customers" /><span>{{ __('ui.customers') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('inventory.view'))
+                        <a href="{{ route('inventory.products.index') }}" class="nav-link {{ request()->routeIs('inventory.products.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="products" /><span>{{ __('ui.products') }}</span>
+                        </a>
+                        <a href="{{ route('inventory.operations.index') }}" class="nav-link {{ request()->routeIs('inventory.operations.*') || request()->routeIs('inventory.stock-counts.*') || request()->routeIs('inventory.writeoffs.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="inventory" /><span>{{ __('ui.inventory_operations') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('purchases.view'))
+                        <a href="{{ route('purchasing.orders.index') }}" class="nav-link {{ request()->routeIs('purchasing.orders.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="purchase" /><span>{{ __('ui.purchase_orders') }}</span>
+                        </a>
+                        <a href="{{ route('purchasing.receipts.index') }}" class="nav-link {{ request()->routeIs('purchasing.receipts.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="receipt" /><span>{{ __('ui.goods_receipts') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('suppliers.view'))
+                        <a href="{{ route('purchasing.suppliers.index') }}" class="nav-link {{ request()->routeIs('purchasing.suppliers.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="supplier" /><span>{{ __('ui.suppliers') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('expenses.view'))
+                        <a href="{{ route('expenses.index') }}" class="nav-link {{ request()->routeIs('expenses.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="expenses" /><span>{{ __('ui.operating_entries') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('cash.view'))
+                        <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="cash" /><span>{{ __('ui.cash_drawer') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('business_days.view'))
+                        <a href="{{ route('closing.index') }}" class="nav-link {{ request()->routeIs('closing.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="closing" /><span>{{ __('ui.daily_closing') }}</span>
+                        </a>
+                    @endif
+                    @if($currentUser->hasPermission('inventory.catalog.manage'))
+                        <a href="{{ route('inventory.catalog.index') }}" class="nav-link {{ request()->routeIs('inventory.catalog.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="settings" /><span>{{ __('ui.catalog_setup') }}</span>
+                        </a>
+                    @endif
+                </div>
+
+                @if($currentUser->hasPermission('reports.view'))
+                    <div class="nav-group-title mt-5">{{ __('ui.insights') }}</div>
+                    <div class="space-y-1">
+                        <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'nav-link-active' : '' }}">
+                            <x-nav-icon name="reports" /><span>{{ __('ui.reports') }}</span>
+                        </a>
+                    </div>
                 @endif
-                @if(auth()->user()->hasPermission('cash.view'))
-                    <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">¤</span><span>{{ __('ui.cash_drawer') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('business_days.view'))
-                    <a href="{{ route('closing.index') }}" class="nav-link {{ request()->routeIs('closing.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">✓</span><span>{{ __('ui.daily_closing') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('sales.view'))
-                    <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">≡</span><span>{{ __('ui.sales') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('inventory.view'))
-                    <a href="{{ route('inventory.products.index') }}" class="nav-link {{ request()->routeIs('inventory.products.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">□</span><span>{{ __('ui.products') }}</span>
-                    </a>
-                    <a href="{{ route('inventory.operations.index') }}" class="nav-link {{ request()->routeIs('inventory.operations.*') || request()->routeIs('inventory.stock-counts.*') || request()->routeIs('inventory.writeoffs.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">◎</span><span>{{ __('ui.inventory_operations') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('purchases.view'))
-                    <a href="{{ route('purchasing.orders.index') }}" class="nav-link {{ request()->routeIs('purchasing.orders.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">⇣</span><span>{{ __('ui.purchase_orders') }}</span>
-                    </a>
-                    <a href="{{ route('purchasing.receipts.index') }}" class="nav-link {{ request()->routeIs('purchasing.receipts.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">✓</span><span>{{ __('ui.goods_receipts') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('suppliers.view'))
-                    <a href="{{ route('purchasing.suppliers.index') }}" class="nav-link {{ request()->routeIs('purchasing.suppliers.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">△</span><span>{{ __('ui.suppliers') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('inventory.catalog.manage'))
-                    <a href="{{ route('inventory.catalog.index') }}" class="nav-link {{ request()->routeIs('inventory.catalog.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">◇</span><span>{{ __('ui.catalog_setup') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('customers.view'))
-                    <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">◇</span><span>{{ __('ui.customers') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('reports.view'))
-                    <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">◌</span><span>{{ __('ui.reports') }}</span>
-                    </a>
-                @endif
-                @if(auth()->user()->hasPermission('settings.manage'))
-                    <a href="{{ route('settings.shop.edit') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'nav-link-active' : '' }}">
-                        <span class="text-lg">⚙</span><span>{{ __('ui.shop_settings') }}</span>
-                    </a>
+
+                @if($currentUser->hasPermission('users.manage') || $currentUser->hasPermission('audit.view') || $currentUser->hasPermission('settings.manage'))
+                    <div class="nav-group-title mt-5">{{ __('ui.administration') }}</div>
+                    <div class="space-y-1">
+                        @if($currentUser->hasPermission('users.manage'))
+                            <a href="{{ route('admin.users.index') }}" class="nav-link {{ request()->routeIs('admin.users.*') ? 'nav-link-active' : '' }}">
+                                <x-nav-icon name="users" /><span>{{ __('ui.users_access') }}</span>
+                            </a>
+                        @endif
+                        @if($currentUser->hasPermission('audit.view'))
+                            <a href="{{ route('admin.audit.index') }}" class="nav-link {{ request()->routeIs('admin.audit.*') ? 'nav-link-active' : '' }}">
+                                <x-nav-icon name="audit" /><span>{{ __('ui.audit_log') }}</span>
+                            </a>
+                        @endif
+                        @if($currentUser->hasPermission('settings.manage'))
+                            <a href="{{ route('settings.terminals.index') }}" class="nav-link {{ request()->routeIs('settings.terminals.*') ? 'nav-link-active' : '' }}">
+                                <x-nav-icon name="terminal" /><span>{{ __('ui.terminals') }}</span>
+                            </a>
+                            <a href="{{ route('settings.shop.edit') }}" class="nav-link {{ request()->routeIs('settings.shop.*') ? 'nav-link-active' : '' }}">
+                                <x-nav-icon name="settings" /><span>{{ __('ui.shop_settings') }}</span>
+                            </a>
+                        @endif
+                    </div>
                 @endif
             </nav>
 
-            <div class="mt-auto panel p-3">
-                <div class="text-sm font-semibold">{{ auth()->user()->name }}</div>
-                <div class="mt-1 text-xs text-slate-500">{{ auth()->user()->username }}</div>
-                <form class="mt-3" method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button class="btn-secondary w-full" type="submit">{{ __('ui.logout') }}</button>
-                </form>
+            <div class="border-t border-slate-100 p-3 dark:border-slate-800">
+                <div class="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/50">
+                    <div class="flex items-center gap-3">
+                        <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-900 text-xs font-black text-white dark:bg-slate-700">{{ mb_strtoupper(mb_substr($currentUser->name, 0, 1)) }}</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-sm font-bold">{{ $currentUser->name }}</div>
+                            <div class="truncate text-xs text-slate-500">{{ '@'.$currentUser->username }}</div>
+                        </div>
+                    </div>
+                    <form class="mt-3" method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button class="btn-secondary w-full py-2" type="submit">{{ __('ui.logout') }}</button>
+                    </form>
+                </div>
             </div>
         </div>
     </aside>
 
     <main class="min-w-0">
-        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85">
             <div class="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                 <div class="flex min-w-0 items-center gap-3">
-                    <button type="button" class="btn-secondary px-3 lg:hidden" @click="navOpen = true" aria-label="{{ __('ui.open_navigation') }}">☰</button>
+                    <button type="button" class="btn-icon lg:hidden" @click="navOpen = true" aria-label="{{ __('ui.open_navigation') }}">
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                    </button>
                     <div class="min-w-0">
-                        <div class="truncate text-xs font-medium text-slate-500">{{ now()->format('l, d M Y') }}</div>
-                        <h1 class="truncate text-base font-bold">@yield('page-title', __('ui.dashboard'))</h1>
+                        <div class="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ now()->format('l, d M Y') }}</div>
+                        <h1 class="truncate text-base font-black">@yield('page-title', __('ui.dashboard'))</h1>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <form method="POST" action="{{ route('locale.update', app()->getLocale() === 'en' ? 'fa' : (app()->getLocale() === 'fa' ? 'ps' : 'en')) }}">
                         @csrf
-                        <button class="btn-secondary" type="submit">{{ __('ui.language') }}</button>
+                        <button class="btn-secondary hidden sm:inline-flex" type="submit">
+                            {{ config('pos.locales.'.app()->getLocale().'.label') }}
+                        </button>
                     </form>
-                    <button class="btn-secondary px-3" type="button" @click="$store.theme.toggle()" aria-label="{{ __('ui.toggle_theme') }}">◐</button>
+                    <button class="btn-icon" type="button" @click="$store.theme.toggle()" aria-label="{{ __('ui.toggle_theme') }}">
+                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 9 9c0-.5 0-1-.1-1.5A7 7 0 0 1 12 3Z"/></svg>
+                    </button>
                 </div>
             </div>
         </header>
 
-        <div class="p-4 sm:p-6 lg:p-8">
+        <div class="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
             @if(session('status'))
-                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                     {{ session('status') }}
                 </div>
             @endif
