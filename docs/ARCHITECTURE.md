@@ -321,3 +321,14 @@ Batch 16 introduces a bounded lookup boundary for high-cardinality operational s
 - Customer and supplier activity reports use deterministic secondary ordering so tied aggregate totals render consistently across SQLite and MySQL.
 - Batch 16 validation: 115 tests / 740 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.
 
+## Role administration and locale UX
+
+Batch 17 exposes the existing RBAC model through a controlled owner-only administration boundary:
+
+- Permissions remain application-defined capability keys so every assigned permission maps to real middleware/domain behavior.
+- Owners can create custom roles and assign any defined permissions.
+- Non-owner roles can have their permission set changed by an owner; the Owner role itself is immutable and User::hasPermission() continues to grant it unconditional access.
+- Built-in role records cannot be deleted and custom roles cannot be deleted while assigned to users.
+- Role create/update/delete operations write audit evidence.
+- Locale switching uses an explicit English / Dari / Pashto dropdown on authenticated and guest surfaces; selection continues through the existing locale controller and user preference persistence.
+- Batch 17 validation: 120 tests / 779 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.

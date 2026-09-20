@@ -50,15 +50,33 @@
                     <button class="btn-primary w-full" type="submit">{{ __('ui.sign_in') }}</button>
                 </form>
 
-                <div class="mt-6 flex justify-center gap-2 text-xs">
-                    @foreach(config('pos.locales') as $code => $locale)
-                        <form method="POST" action="{{ route('locale.update', $code) }}">
-                            @csrf
-                            <button type="submit" class="rounded-lg px-2 py-1 {{ app()->getLocale() === $code ? 'bg-brand-50 font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white' }}">
-                                {{ $locale['label'] }}
-                            </button>
-                        </form>
-                    @endforeach
+                <div class="mt-6 flex justify-center">
+                    <div class="relative" x-data="{ languageOpen: false }" @click.outside="languageOpen = false">
+                        <button class="btn-secondary min-w-44 justify-between" type="button" @click="languageOpen = !languageOpen" aria-haspopup="menu" :aria-expanded="languageOpen">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9"/>
+                                    <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
+                                </svg>
+                                {{ config('pos.locales.'.app()->getLocale().'.label') }}
+                            </span>
+                            <svg class="size-4 transition" :class="languageOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+
+                        <div x-cloak x-show="languageOpen" x-transition class="absolute bottom-full start-1/2 z-50 mb-2 w-48 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900" role="menu">
+                            @foreach(config('pos.locales') as $code => $locale)
+                                <form method="POST" action="{{ route('locale.update', $code) }}">
+                                    @csrf
+                                    <button type="submit" role="menuitem" class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-start text-sm font-semibold transition hover:bg-slate-50 dark:hover:bg-slate-800 {{ app()->getLocale() === $code ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300' : 'text-slate-700 dark:text-slate-200' }}">
+                                        <span>{{ $locale['label'] }}</span>
+                                        @if(app()->getLocale() === $code)
+                                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+                                        @endif
+                                    </button>
+                                </form>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
