@@ -16,6 +16,7 @@ use App\Http\Controllers\Closing\BusinessDayClosingController;
 use App\Http\Controllers\Closing\ShiftClosingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\SetupController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\InventoryOperationsController;
@@ -43,6 +44,11 @@ use App\Http\Controllers\Settings\ShopSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+
+Route::get('/setup', [SetupController::class, 'create'])->name('setup');
+Route::post('/setup', [SetupController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('setup.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
