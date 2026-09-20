@@ -328,8 +328,8 @@ class ReportingAnalyticsTest extends TestCase
         $this->assertSame('30.00', $report['salesTrend']->first()->net_total);
         $this->assertSame('30.00', $report['topProducts']->first()->net_sales);
         $this->assertSame('30.00', $report['categoryProfit']->first()->net_sales);
-        $this->assertSame('30', (string) $report['peakHours']->first()->net_total);
-        $this->assertSame('30', (string) $report['weekdays']->first()->net_total);
+        $this->assertSame('30.00', (string) $report['peakHours']->first()->net_total);
+        $this->assertSame('30.00', (string) $report['weekdays']->first()->net_total);
     }
 
     public function test_cashier_without_reports_permission_cannot_open_reports(): void
