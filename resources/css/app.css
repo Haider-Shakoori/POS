@@ -73,6 +73,27 @@
         @apply mb-1.5 block text-xs font-bold text-slate-500 dark:text-slate-400;
     }
 
+    .app-sidebar-open {
+        transform: translateX(0);
+    }
+
+    .app-sidebar-closed {
+        transform: translateX(-100%);
+    }
+
+    html[dir='rtl'] .app-sidebar-closed {
+        transform: translateX(100%);
+    }
+
+    @media (min-width: 64rem) {
+        .app-sidebar,
+        .app-sidebar-open,
+        .app-sidebar-closed,
+        html[dir='rtl'] .app-sidebar-closed {
+            transform: translateX(0) !important;
+        }
+    }
+
     .nav-group-title {
         @apply mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500;
     }
