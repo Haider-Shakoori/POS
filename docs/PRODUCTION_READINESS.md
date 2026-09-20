@@ -47,7 +47,7 @@ Run migrations with a database backup and maintenance/traffic-control plan appro
 
 ## Verified release candidate
 
-POS CI #80 passed on the committed dependency lockfiles:
+Final Batch 14 CI passed on the committed dependency lockfiles:
 
 - SQLite: 107 tests passed / 689 assertions.
 - MySQL 8.4: 107 tests passed / 689 assertions.
