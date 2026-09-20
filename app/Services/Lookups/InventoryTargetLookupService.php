@@ -87,25 +87,19 @@ class InventoryTargetLookupService
 
         $query = ProductBatch::query()
             ->with('product.baseUnit:id,symbol')
-            ->whereHas('product', function (Builder $product) use ($term, $prefix, $mode): void {
+            ->whereHas('product', function (Builder $product) use ($mode): void {
                 if ($mode !== 'expiry') {
                     $product->where('is_active', true);
                 }
 
                 $product->where('track_stock', true)
-                    ->where('track_expiry', true)
-                    ->where(function (Builder $builder) use ($term, $prefix): void {
-                        $builder->where('sku', $term)
-                            ->orWhere('sku', 'like', $prefix)
-                            ->orWhere('name_en', 'like', $prefix)
-                            ->orWhere('name_fa', 'like', $prefix)
-                            ->orWhere('name_ps', 'like', $prefix);
-                    });
+                    ->where('track_expiry', true);
             })
-            ->where(function (Builder $builder) use ($prefix): void {
+            ->where(function (Builder $builder) use ($term, $prefix): void {
                 $builder->where('batch_number', 'like', $prefix)
-                    ->orWhereHas('product', function (Builder $product) use ($prefix): void {
-                        $product->where('sku', 'like', $prefix)
+                    ->orWhereHas('product', function (Builder $product) use ($term, $prefix): void {
+                        $product->where('sku', $term)
+                            ->orWhere('sku', 'like', $prefix)
                             ->orWhere('name_en', 'like', $prefix)
                             ->orWhere('name_fa', 'like', $prefix)
                             ->orWhere('name_ps', 'like', $prefix);
