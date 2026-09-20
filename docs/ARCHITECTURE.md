@@ -318,4 +318,6 @@ Batch 16 introduces a bounded lookup boundary for high-cardinality operational s
 - Lookup responses are throttled, capped, permission-protected and use prefix-oriented indexed search.
 - Expiry and reorder monitoring use database filtering/counting and independent pagination; totals no longer require loading full collections into PHP.
 - Browser lookups debounce input and abort stale requests so rapid typing does not queue obsolete responses.
+- Customer and supplier activity reports use deterministic secondary ordering so tied aggregate totals render consistently across SQLite and MySQL.
+- Batch 16 validation: 115 tests / 740 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.
 
