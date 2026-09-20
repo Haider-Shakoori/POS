@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\TerminalController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Customers\CustomerCollectionController;
 use App\Http\Controllers\Customers\CustomerController;
@@ -75,6 +78,13 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:sales.hold')
             ->name('held.release');
     });
+
+    Route::get('/expenses', [OperatingEntryController::class, 'index'])
+        ->middleware('permission:expenses.view')
+        ->name('expenses.index');
+    Route::post('/expenses', [OperatingEntryController::class, 'store'])
+        ->middleware('permission:expenses.create')
+        ->name('expenses.store');
 
     Route::prefix('cash')->name('cash.')->group(function () {
         Route::get('/', CashDrawerController::class)
@@ -264,9 +274,27 @@ Route::middleware('auth')->group(function () {
             ->name('receipts.returns.store');
     });
 
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/users', [UserController::class, 'index'])
+            ->middleware('permission:users.manage')
+            ->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])
+            ->middleware('permission:users.manage')
+            ->name('users.store');
+        Route::put('/users/{user}', [UserController::class, 'update'])
+            ->middleware('permission:users.manage')
+            ->name('users.update');
+        Route::get('/audit-log', AuditLogController::class)
+            ->middleware('permission:audit.view')
+            ->name('audit.index');
+    });
+
     Route::prefix('settings')->name('settings.')->middleware('permission:settings.manage')->group(function () {
         Route::get('/shop', [ShopSettingsController::class, 'edit'])->name('shop.edit');
         Route::put('/shop', [ShopSettingsController::class, 'update'])->name('shop.update');
+        Route::get('/terminals', [TerminalController::class, 'index'])->name('terminals.index');
+        Route::post('/terminals', [TerminalController::class, 'store'])->name('terminals.store');
+        Route::put('/terminals/{terminal}', [TerminalController::class, 'update'])->name('terminals.update');
     });
 
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
