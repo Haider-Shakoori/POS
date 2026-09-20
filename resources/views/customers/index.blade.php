@@ -4,6 +4,7 @@
 @section('page-title', __('ui.customers'))
 
 @section('content')
+@section('page-errors', '1')
 <div class="space-y-5">
     <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
         <div>

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TerminalController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\SetupController;
 use App\Http\Controllers\Customers\CustomerCollectionController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\CustomerSearchController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Cash\ShiftOpeningController;
 use App\Http\Controllers\Closing\BusinessDayClosingController;
 use App\Http\Controllers\Closing\ShiftClosingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\OpeningStockController;
@@ -44,6 +46,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 
+Route::get('/setup', [SetupController::class, 'create'])->name('setup');
+Route::post('/setup', [SetupController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('setup.store');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
@@ -55,6 +62,10 @@ Route::post('/locale/{locale}', [LocaleController::class, 'update'])
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('/search', GlobalSearchController::class)
+        ->middleware('throttle:120,1')
+        ->name('search');
 
     Route::prefix('pos')->name('pos.')->middleware('permission:pos.access')->group(function () {
         Route::get('/', PosController::class)->name('index');

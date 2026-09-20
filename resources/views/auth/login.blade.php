@@ -26,6 +26,12 @@
             </div>
 
             <div class="panel p-6 sm:p-8">
+                @if(session('status'))
+                    <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
                 <h2 class="text-2xl font-black">{{ __('ui.sign_in') }}</h2>
                 <p class="mt-2 text-sm text-slate-500">{{ __('ui.sign_in_help') }}</p>
 

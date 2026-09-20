@@ -10,6 +10,8 @@
         <p class="mt-1 text-sm text-slate-500">{{ __('ui.catalog_setup_help') }}</p>
     </div>
 
+    @section('page-errors', '1')
+
     @if($errors->any())
         <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             <ul class="list-disc space-y-1 ps-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>

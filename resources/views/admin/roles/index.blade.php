@@ -11,6 +11,8 @@
         <p class="page-subtitle">{{ __('ui.roles_permissions_help') }}</p>
     </div>
 
+    @section('page-errors', '1')
+
     @if($errors->any())
         <div class="alert-error">{{ $errors->first() }}</div>
     @endif

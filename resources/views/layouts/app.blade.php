@@ -213,6 +213,16 @@
                             @endforeach
                         </div>
                     </div>
+                    <button
+                        class="btn-secondary gap-2 px-3"
+                        type="button"
+                        title="{{ __('ui.global_search') }}"
+                        @click="window.dispatchEvent(new CustomEvent('open-global-search'))"
+                    >
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                        <span class="hidden xl:inline text-xs font-bold text-slate-400">{{ __('ui.global_search') }}</span>
+                        <kbd class="hidden xl:inline rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Ctrl K</kbd>
+                    </button>
                     <button class="btn-icon" type="button" @click="$store.theme.toggle()" aria-label="{{ __('ui.toggle_theme') }}">
                         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 9 9c0-.5 0-1-.1-1.5A7 7 0 0 1 12 3Z"/></svg>
                     </button>
@@ -226,9 +236,124 @@
                     {{ session('status') }}
                 </div>
             @endif
+            @unless(\Illuminate\Support\Facades\View::hasSection('page-errors'))
+                @if($errors->any())
+                    <div class="alert-error mb-5">{{ $errors->first() }}</div>
+                @endif
+            @endunless
             @yield('content')
         </div>
     </main>
+</div>
+
+<div
+    x-data="{
+        open: false,
+        query: '',
+        loading: false,
+        results: [],
+        failed: false,
+        searchUrl: @js(route('search')),
+        typeLabels: {
+            product: @js(__('ui.products')),
+            customer: @js(__('ui.customers')),
+            supplier: @js(__('ui.suppliers')),
+            sale: @js(__('ui.sales')),
+        },
+        init() {
+            window.addEventListener('keydown', (event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+                    event.preventDefault();
+                    this.openPalette();
+                }
+
+                if (event.key === 'Escape' && this.open) {
+                    this.open = false;
+                }
+            });
+
+            window.addEventListener('open-global-search', () => this.openPalette());
+        },
+        openPalette() {
+            this.open = true;
+            this.$nextTick(() => this.$refs.paletteInput?.focus());
+        },
+        async run() {
+            this.failed = false;
+
+            if (this.query.trim().length < 2) {
+                this.results = [];
+                return;
+            }
+
+            this.loading = true;
+
+            try {
+                const response = await fetch(this.searchUrl + '?q=' + encodeURIComponent(this.query), {
+                    headers: { 'Accept': 'application/json' },
+                });
+
+                if (!response.ok) throw new Error('search failed');
+
+                const payload = await response.json();
+                this.results = payload.data || [];
+            } catch (error) {
+                this.failed = true;
+                this.results = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+        goFirst() {
+            if (this.results.length) window.location.href = this.results[0].url;
+        },
+    }"
+    x-cloak
+    x-show="open"
+    x-transition.opacity
+    class="fixed inset-0 z-[110] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
+    @keydown.escape.window="open = false"
+>
+    <div class="mx-auto mt-20 max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" @click.outside="open = false">
+        <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <svg class="size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input
+                x-ref="paletteInput"
+                x-model="query"
+                @input.debounce.250ms="run()"
+                @keydown.enter.prevent="goFirst()"
+                class="w-full border-0 bg-transparent p-0 text-sm font-semibold outline-none focus:ring-0"
+                placeholder="{{ __('ui.global_search_placeholder') }}"
+                autocomplete="off"
+            >
+            <span x-show="loading" class="text-xs text-slate-400">{{ __('ui.searching') }}</span>
+            <button type="button" class="btn-secondary px-2 py-1 text-xs" @click="open = false">Esc</button>
+        </div>
+
+        <div class="max-h-96 overflow-y-auto">
+            <template x-if="failed">
+                <div class="px-4 py-8 text-center text-sm text-red-600">{{ __('ui.search_failed') }}</div>
+            </template>
+
+            <template x-if="!failed && query.trim().length >= 2 && !loading && !results.length">
+                <div class="px-4 py-8 text-center text-sm text-slate-400">{{ __('ui.no_results') }}</div>
+            </template>
+
+            <template x-for="result in results" :key="result.type + ':' + result.url">
+                <a :href="result.url" class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-start transition last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-bold" x-text="result.label"></div>
+                        <div class="mt-0.5 truncate text-xs text-slate-500" x-text="result.meta || '—'"></div>
+                    </div>
+                    <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:bg-slate-800" x-text="typeLabels[result.type] || result.type"></span>
+                </a>
+            </template>
+
+            <div x-show="query.trim().length < 2" class="px-4 py-8 text-center text-xs text-slate-400">
+                {{ __('ui.global_search_hint') }}
+            </div>
+        </div>
+    </div>
 </div>
 </body>
 </html>

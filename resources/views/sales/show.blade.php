@@ -4,6 +4,7 @@
 @section('page-title', $sale->number)
 
 @section('content')
+@section('page-errors', '1')
 <div class="space-y-5">
     <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>

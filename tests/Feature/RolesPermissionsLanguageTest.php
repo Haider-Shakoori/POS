@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -182,5 +183,55 @@ class RolesPermissionsLanguageTest extends TestCase
             ->assertOk()
             ->assertSee('lang="fa"', false)
             ->assertSee('dir="rtl"', false);
+    }
+
+    public function test_common_and_audit_labels_are_translated_in_every_locale(): void
+    {
+        foreach (['en', 'fa', 'ps'] as $locale) {
+            app()->setLocale($locale);
+
+            $this->assertNotSame('ui.name', __('ui.name'));
+            $this->assertNotSame('audit.auth.login', __('audit.auth.login'));
+        }
+
+        $flatten = function (array $lines, string $prefix = '') use (&$flatten): array {
+            $keys = [];
+
+            foreach ($lines as $key => $value) {
+                $full = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+
+                if (is_array($value)) {
+                    $keys = array_merge($keys, $flatten($value, $full));
+                } else {
+                    $keys[] = $full;
+                }
+            }
+
+            return $keys;
+        };
+
+        $english = $flatten(require lang_path('en/audit.php'));
+
+        sort($english);
+
+        foreach (['fa', 'ps'] as $locale) {
+            $translated = $flatten(require lang_path($locale.'/audit.php'));
+
+            sort($translated);
+
+            $this->assertSame($english, $translated, "Audit label key mismatch for locale [{$locale}].");
+        }
+    }
+
+    public function test_audit_log_page_renders_translated_event_labels(): void
+    {
+        $this->withoutVite();
+
+        app(AuditLogger::class)->record('auth.login', actor: $this->owner);
+
+        $this->actingAs($this->owner)
+            ->get(route('admin.audit.index'))
+            ->assertOk()
+            ->assertSee('Signed in');
     }
 }

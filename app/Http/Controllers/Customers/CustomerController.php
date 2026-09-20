@@ -7,6 +7,7 @@ use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Services\Customers\CustomerService;
+use App\Support\Decimal;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;

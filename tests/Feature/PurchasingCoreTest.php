@@ -173,6 +173,36 @@ class PurchasingCoreTest extends TestCase
         $this->assertSame(2, GoodsReceipt::query()->where('purchase_order_id', $order->id)->count());
     }
 
+    public function test_goods_receipt_show_page_renders_with_cost_layer_remaining_quantity(): void
+    {
+        $this->withoutVite();
+
+        [$product, $cartonUnit] = $this->makeProduct();
+        $order = $this->approvedOrder($cartonUnit->id, '10', '720.0000');
+        $poItem = $order->items()->firstOrFail();
+
+        $receipt = app(GoodsReceiptService::class)->post([
+            'idempotency_key' => (string) Str::uuid(),
+            'supplier_id' => $this->supplier->id,
+            'purchase_order_id' => $order->id,
+            'received_at' => now()->toDateTimeString(),
+            'paid_amount' => '0.00',
+            'items' => [[
+                'purchase_order_item_id' => $poItem->id,
+                'quantity' => '4',
+                'unit_cost' => '720.0000',
+                'line_discount_amount' => '0.00',
+            ]],
+        ], $this->owner);
+
+        $this->assertNotNull($receipt->items->firstOrFail()->costLayer);
+
+        $this->actingAs($this->owner)
+            ->get(route('purchasing.receipts.show', $receipt))
+            ->assertOk()
+            ->assertSee($receipt->number);
+    }
+
     public function test_receipt_discount_and_expense_allocations_reconcile_exactly(): void
     {
         [$productA, $unitA] = $this->makeProduct('ALLOC-A');

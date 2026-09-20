@@ -4,6 +4,13 @@
 @section('page-title', __('ui.audit_log'))
 
 @section('content')
+@php
+    $eventLabel = function (string $event): string {
+        $label = __('audit.'.$event);
+
+        return $label === 'audit.'.$event ? $event : $label;
+    };
+@endphp
 <div class="space-y-6">
     <div>
         <p class="eyebrow">{{ __('ui.administration') }}</p>
@@ -18,7 +25,7 @@
                 <select class="field" name="event">
                     <option value="">{{ __('ui.all_events') }}</option>
                     @foreach($events as $event)
-                        <option value="{{ $event }}" @selected(($filters['event'] ?? '') === $event)>{{ $event }}</option>
+                        <option value="{{ $event }}" @selected(($filters['event'] ?? '') === $event)>{{ $eventLabel($event) }}</option>
                     @endforeach
                 </select>
                 <select class="field" name="actor_user_id">
@@ -52,7 +59,7 @@
                     @forelse($logs as $log)
                         <tr>
                             <td class="whitespace-nowrap">{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
-                            <td><span class="badge badge-neutral">{{ $log->event }}</span></td>
+                            <td><span class="badge badge-neutral" title="{{ $log->event }}">{{ $eventLabel($log->event) }}</span></td>
                             <td>{{ $log->actor?->name ?? __('ui.system') }}<div class="text-xs text-slate-500">{{ $log->actor?->username }}</div></td>
                             <td>
                                 @if($log->auditable_type)

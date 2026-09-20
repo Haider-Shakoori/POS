@@ -26,6 +26,8 @@ class SecurityPerformanceHardeningTest extends TestCase
     {
         $this->withoutVite();
 
+        User::factory()->create();
+
         $this->get('/login')
             ->assertOk()
             ->assertHeader('X-Content-Type-Options', 'nosniff')

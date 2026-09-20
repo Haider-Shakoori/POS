@@ -4,6 +4,7 @@
 @section('page-title', __('ui.shop_settings'))
 
 @section('content')
+@section('page-errors', '1')
 <div class="mx-auto max-w-5xl space-y-5">
     <div>
         <h2 class="text-2xl font-black">{{ __('ui.shop_settings') }}</h2>

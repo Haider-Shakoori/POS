@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\Audit\AuditLogger;
+use App\Support\FirstRunSetup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,13 +13,24 @@ use Illuminate\View\View;
 
 class LoginController extends Controller
 {
-    public function create(): View
+    public function create(FirstRunSetup $setup): View|RedirectResponse
     {
+        if ($setup->required()) {
+            return redirect()->route('setup');
+        }
+
         return view('auth.login');
     }
 
-    public function store(Request $request, AuditLogger $audit): RedirectResponse
-    {
+    public function store(
+        Request $request,
+        AuditLogger $audit,
+        FirstRunSetup $setup,
+    ): RedirectResponse {
+        if ($setup->required()) {
+            return redirect()->route('setup');
+        }
+
         $credentials = $request->validate([
             'username' => ['required', 'string', 'max:100'],
             'password' => ['required', 'string'],

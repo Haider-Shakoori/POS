@@ -11,6 +11,8 @@
         <p class="page-subtitle">{{ __('ui.terminals_help') }}</p>
     </div>
 
+    @section('page-errors', '1')
+
     @if($errors->any())<div class="alert-error">{{ $errors->first() }}</div>@endif
 
     <div class="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">

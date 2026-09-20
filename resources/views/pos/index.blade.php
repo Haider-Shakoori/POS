@@ -28,9 +28,9 @@
             holdFailed: @js(__('ui.hold_sale_failed')),
             heldLoadFailed: @js(__('ui.held_sales_load_failed')),
             cartMustBeEmpty: @js(__('ui.cart_must_be_empty_to_resume')),
+            clearCartConfirm: @js(__('ui.clear_cart_confirm')),
         }
     })"
-    x-init="$nextTick(() => $refs.search.focus())"
     class="grid min-h-[calc(100vh-9rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_28rem]"
 >
     <section class="panel flex min-h-[36rem] flex-col overflow-hidden">
@@ -49,9 +49,19 @@
                 <span class="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400">⌕</span>
                 <span x-show="searching" class="absolute end-4 top-1/2 -translate-y-1/2 animate-pulse text-xs text-slate-400">{{ __('ui.searching') }}</span>
             </div>
-            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                 <span>{{ __('ui.pos_enter_hint') }}</span>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Enter</kbd>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Esc</kbd>
                 <span>{{ __('ui.pos_server_totals_hint') }}</span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">F2</kbd><span>{{ __('ui.focus_search') }}</span>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">F4</kbd><span>{{ __('ui.customer') }}</span>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">F6</kbd><span>{{ __('ui.hold_sale') }}</span>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">F8</kbd><span>{{ __('ui.held_sales') }}</span>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">F9</kbd><span>{{ __('ui.pay_and_complete') }}</span>
+                <kbd class="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">F10</kbd><span>{{ __('ui.confirm_checkout') }}</span>
             </div>
         </div>
 
@@ -80,11 +90,23 @@
                                 <div class="truncate font-bold" x-text="product.name"></div>
                                 <div class="mt-1 text-xs text-slate-500"><span x-text="product.sku"></span> · <span x-text="product.unit"></span></div>
                             </div>
-                            <div class="shrink-0 text-end font-black"><span x-text="money(product.price)"></span></div>
+                            <div class="shrink-0 text-end font-black tabular-nums"><span x-text="money(product.price)"></span></div>
                         </div>
-                        <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
-                            <span x-show="product.track_stock">{{ __('ui.available') }}: <strong x-text="formatQty(product.available_quantity)"></strong></span>
-                            <span x-show="!product.track_stock">{{ __('ui.untracked_stock') }}</span>
+                        <div class="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                            <template x-if="product.track_stock">
+                                <span
+                                    class="rounded-full px-2 py-1 font-bold"
+                                    :class="stockState(product) === 'out'
+                                        ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+                                        : (stockState(product) === 'low'
+                                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
+                                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300')"
+                                >
+                                    <span x-show="stockState(product) === 'out'">{{ __('ui.out_of_stock') }}</span>
+                                    <span x-show="stockState(product) !== 'out'">{{ __('ui.available') }}: <span class="tabular-nums" x-text="formatQty(product.available_quantity)"></span></span>
+                                </span>
+                            </template>
+                            <span x-show="!product.track_stock" class="rounded-full bg-slate-100 px-2 py-1 font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">{{ __('ui.untracked_stock') }}</span>
                             <span x-show="product.track_expiry" class="rounded-full bg-amber-50 px-2 py-1 font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">{{ __('ui.fefo') }}</span>
                         </div>
                     </button>
@@ -112,12 +134,22 @@
                     <h3 class="font-black">{{ __('ui.current_sale') }}</h3>
                     <div class="mt-1 text-xs text-slate-500" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></div>
                 </div>
-                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800"><span x-text="cart.length"></span> {{ __('ui.items') }}</span>
+                <div class="flex items-center gap-2">
+                    <button type="button" x-show="cart.length" class="text-xs font-bold text-slate-400 transition hover:text-red-600" @click="clearCart()">{{ __('ui.clear_cart') }}</button>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800"><span x-text="cart.length"></span> {{ __('ui.items') }}</span>
+                </div>
             </div>
         </div>
 
         <div class="flex-1 overflow-auto">
-            <div x-show="!cart.length" class="grid min-h-64 place-items-center p-6 text-center text-sm text-slate-400">{{ __('ui.cart_empty') }}</div>
+            <div x-show="!cart.length" class="grid min-h-64 place-items-center p-6 text-center">
+                <div>
+                    <div class="mx-auto grid size-14 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                        <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h2l2.2 9.2a2 2 0 0 0 2 1.5h7.6a2 2 0 0 0 2-1.6L20 9H7"/><circle cx="10" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>
+                    </div>
+                    <div class="mt-3 text-sm text-slate-400">{{ __('ui.cart_empty') }}</div>
+                </div>
+            </div>
 
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 <template x-for="(item,index) in cart" :key="item.product_unit_id">
@@ -127,14 +159,14 @@
                                 <div class="truncate font-bold" x-text="item.name"></div>
                                 <div class="mt-1 text-xs text-slate-500"><span x-text="item.unit"></span> · <span x-text="money(item.price)"></span></div>
                             </div>
-                            <button type="button" class="text-lg text-slate-400 hover:text-red-600" @click="removeItem(index)">×</button>
+                            <button type="button" class="rounded-lg px-2 py-1 text-lg leading-none text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40" @click="removeItem(index)" aria-label="{{ __('ui.remove') }}">×</button>
                         </div>
 
-                        <div class="mt-3 grid grid-cols-[2.1rem_minmax(0,1fr)_2.1rem_7rem] gap-2">
-                            <button type="button" class="btn-secondary px-0" @click="changeQty(index,-1)">−</button>
-                            <input class="field text-center" x-model="item.quantity" @change="normalizeQty(index)" :step="item.decimal_places > 0 ? Math.pow(10,-item.decimal_places) : 1" inputmode="decimal">
-                            <button type="button" class="btn-secondary px-0" @click="changeQty(index,1)">+</button>
-                            <div class="grid place-items-center rounded-xl bg-slate-50 px-2 text-end text-sm font-bold dark:bg-slate-800/60" x-text="money(lineSubtotal(item))"></div>
+                        <div class="mt-3 grid grid-cols-[2.6rem_minmax(0,1fr)_2.6rem_7.5rem] gap-2">
+                            <button type="button" class="btn-secondary px-0 py-2.5 text-lg" @click="changeQty(index,-1)">−</button>
+                            <input class="field text-center tabular-nums" x-model="item.quantity" @change="normalizeQty(index)" :step="item.decimal_places > 0 ? Math.pow(10,-item.decimal_places) : 1" inputmode="decimal">
+                            <button type="button" class="btn-secondary px-0 py-2.5 text-lg" @click="changeQty(index,1)">+</button>
+                            <div class="grid place-items-center rounded-xl bg-slate-50 px-2 text-end text-sm font-black tabular-nums dark:bg-slate-800/60" x-text="money(lineSubtotal(item))"></div>
                         </div>
 
                         <div x-show="canDiscount" class="mt-3">
@@ -152,9 +184,9 @@
                 <input class="field" x-model="saleDiscount" inputmode="decimal" min="0">
             </div>
 
-            <div class="flex justify-between text-sm"><span>{{ __('ui.subtotal') }}</span><strong x-text="money(subtotal())"></strong></div>
-            <div class="flex justify-between text-sm"><span>{{ __('ui.discount') }}</span><strong x-text="money(totalDiscount())"></strong></div>
-            <div class="flex justify-between border-t border-slate-200 pt-3 text-xl dark:border-slate-800"><span class="font-black">{{ __('ui.total') }}</span><strong x-text="money(total())"></strong></div>
+            <div class="flex justify-between text-sm"><span>{{ __('ui.subtotal') }}</span><strong class="tabular-nums" x-text="money(subtotal())"></strong></div>
+            <div class="flex justify-between text-sm"><span>{{ __('ui.discount') }}</span><strong class="tabular-nums" x-text="money(totalDiscount())"></strong></div>
+            <div class="flex justify-between border-t border-slate-200 pt-3 text-xl dark:border-slate-800"><span class="font-black">{{ __('ui.total') }}</span><strong class="tabular-nums" x-text="money(total())"></strong></div>
 
             <div x-show="canHold" class="grid grid-cols-2 gap-2">
                 <button class="btn-secondary" type="button" @click="holdCurrentSale()" :disabled="!cart.length || holding">
@@ -168,6 +200,7 @@
 
             <button class="btn-primary w-full py-3.5" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
                 {{ __('ui.pay_and_complete') }}
+                <span class="tabular-nums" x-show="cart.length" x-text="'· ' + money(total())"></span>
             </button>
             <p class="text-xs leading-5 text-slate-500">{{ __('ui.payment_server_notice') }}</p>
         </div>
@@ -212,7 +245,7 @@
 
                         <div x-show="!selectedCustomer" class="mt-2">
                             <div class="flex gap-2">
-                                <input class="field" x-model="customerQuery" @input.debounce.250ms="searchCustomers()" placeholder="{{ __('ui.search_customer_pos') }}">
+                                <input class="field" x-ref="customerSearch" x-model="customerQuery" @input.debounce.250ms="searchCustomers()" placeholder="{{ __('ui.search_customer_pos') }}">
                                 <button x-show="canQuickCreateCustomers" class="btn-secondary shrink-0" type="button" @click="customerCreateOpen=!customerCreateOpen">＋</button>
                             </div>
 
@@ -395,6 +428,61 @@ function posWorkspace(config) {
             if (this.canHold) {
                 this.loadHeldSales();
             }
+
+            this.$nextTick(() => this.$refs.search?.focus());
+
+            window.addEventListener('keydown', (event) => this.handleShortcut(event));
+        },
+
+        handleShortcut(event) {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+            if (event.key === 'F10') {
+                if (this.paymentOpen && this.cart.length && !this.submitting) {
+                    event.preventDefault();
+                    this.completeSale();
+                }
+
+                return;
+            }
+
+            const actions = {
+                F2: () => {
+                    if (this.paymentOpen || this.heldOpen) return;
+
+                    this.$refs.search?.focus();
+                    this.$refs.search?.select?.();
+                },
+                F4: () => {
+                    if (!this.cart.length || this.heldOpen) return;
+
+                    this.openSettlement();
+                    this.$nextTick(() => this.$refs.customerSearch?.focus());
+                },
+                F6: () => {
+                    if (this.paymentOpen || this.heldOpen || !this.cart.length || !this.canHold) return;
+
+                    this.holdCurrentSale();
+                },
+                F8: () => {
+                    if (this.paymentOpen || !this.canHold) return;
+
+                    this.heldOpen = true;
+                    this.loadHeldSales();
+                },
+                F9: () => {
+                    if (this.paymentOpen || this.heldOpen) return;
+
+                    this.openSettlement();
+                },
+            };
+
+            const action = actions[event.key];
+
+            if (!action) return;
+
+            event.preventDefault();
+            action();
         },
 
         resetSaleKey() {
@@ -449,7 +537,7 @@ function posWorkspace(config) {
         clearSearch() {
             this.query = '';
             this.results = [];
-            this.$nextTick(() => this.$refs.search.focus());
+            this.$nextTick(() => this.$refs.search?.focus());
         },
 
         addProduct(product) {
@@ -466,7 +554,7 @@ function posWorkspace(config) {
 
         removeItem(index) {
             this.cart.splice(index, 1);
-            this.$nextTick(() => this.$refs.search.focus());
+            this.$nextTick(() => this.$refs.search?.focus());
         },
 
         changeQty(index, delta) {
@@ -522,6 +610,24 @@ function posWorkspace(config) {
         formatQty(value) {
             if (value === null || value === undefined) return '—';
             return Number(value).toLocaleString(undefined, {maximumFractionDigits: 6});
+        },
+
+        stockState(product) {
+            if (!product.track_stock) return 'untracked';
+
+            const available = Number(product.available_quantity || 0);
+
+            if (available <= 0) return 'out';
+            if (available <= 5) return 'low';
+
+            return 'ok';
+        },
+
+        clearCart() {
+            if (!this.cart.length) return;
+            if (!window.confirm(config.labels.clearCartConfirm)) return;
+
+            this.cart = [];
         },
 
         openSettlement() {
@@ -795,7 +901,7 @@ function posWorkspace(config) {
                 this.resetHoldKey();
                 this.heldOpen = false;
                 await this.loadHeldSales();
-                this.$nextTick(() => this.$refs.search.focus());
+                this.$nextTick(() => this.$refs.search?.focus());
             } catch (error) {
                 this.message = error.message || config.labels.holdFailed;
             }
@@ -834,7 +940,7 @@ function posWorkspace(config) {
             this.customerQuery = '';
             this.customerResults = [];
             this.resetSaleKey();
-            this.$nextTick(() => this.$refs.search.focus());
+            this.$nextTick(() => this.$refs.search?.focus());
         },
 
         async completeSale() {
@@ -888,6 +994,8 @@ function posWorkspace(config) {
                 this.message = '';
                 this.resetTransaction();
                 this.resetHoldKey();
+
+                window.location.href = payload.sale.receipt_url;
             } catch (error) {
                 this.message = error.message || config.labels.saleFailed;
             } finally {

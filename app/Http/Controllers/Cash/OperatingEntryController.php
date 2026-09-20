@@ -28,8 +28,8 @@ class OperatingEntryController extends Controller
 
         $query = OperatingEntry::query()
             ->with([
-                'category:id,name,entry_type',
-                'paymentMethod:id,name,is_cash',
+                'category:id,name_en,name_fa,name_ps,entry_type',
+                'paymentMethod:id,name_en,name_fa,name_ps,is_cash',
                 'recordedBy:id,name,username',
             ]);
 

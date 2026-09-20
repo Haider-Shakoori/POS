@@ -38,6 +38,9 @@ class CashDrawerController extends Controller
             'shift' => $shift,
             'terminals' => Terminal::query()
                 ->where('is_active', true)
+                ->whereNotIn('id', CashierShift::query()
+                    ->where('status', ShiftStatus::Open->value)
+                    ->select('terminal_id'))
                 ->orderBy('name')
                 ->get(),
             'expenseCategories' => ExpenseCategory::query()

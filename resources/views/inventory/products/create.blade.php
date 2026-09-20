@@ -12,6 +12,8 @@
 }">
     @csrf
 
+    @section('page-errors', '1')
+
     @if($errors->any())
         <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             <div class="font-bold">{{ __('ui.fix_validation_errors') }}</div>

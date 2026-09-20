@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 class GoodsReceiptItem extends Model
@@ -92,7 +93,7 @@ class GoodsReceiptItem extends Model
         return $this->hasMany(PurchaseReturnItem::class);
     }
 
-    public function costLayer(): IlluminateDatabaseEloquentRelationsHasOne
+    public function costLayer(): HasOne
     {
         return $this->hasOne(InventoryCostLayer::class, 'source_stock_movement_id', 'stock_movement_id');
     }

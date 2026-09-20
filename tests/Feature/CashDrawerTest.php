@@ -278,6 +278,40 @@ class CashDrawerTest extends TestCase
         $this->assertSame(0, CashMovement::query()->count());
     }
 
+    public function test_customer_show_page_renders_available_credit(): void
+    {
+        $this->withoutVite();
+
+        $customer = $this->makeCustomer('Credit Page Customer', '200.00');
+
+        $this->actingAs($this->owner)
+            ->get(route('customers.show', $customer))
+            ->assertOk()
+            ->assertSee('Credit Page Customer')
+            ->assertSee('200.00');
+    }
+
+    public function test_expenses_index_renders_entries_with_localized_category_and_payment_method(): void
+    {
+        $this->withoutVite();
+
+        $category = ExpenseCategory::query()->where('code', 'rent')->firstOrFail();
+
+        app(OperatingEntryService::class)->record([
+            'idempotency_key' => (string) Str::uuid(),
+            'entry_type' => 'expense',
+            'expense_category_id' => $category->id,
+            'payment_method_id' => $this->bank->id,
+            'amount' => '15.00',
+            'description' => 'Expenses page regression',
+        ], $this->owner);
+
+        $this->actingAs($this->owner)
+            ->get(route('expenses.index'))
+            ->assertOk()
+            ->assertSee('Expenses page regression');
+    }
+
     public function test_cash_checkout_without_open_shift_rolls_back_sale_payment_stock_and_cash(): void
     {
         [$product, $piece] = $this->makeProduct('NO-SHIFT');

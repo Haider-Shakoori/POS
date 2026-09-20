@@ -4,6 +4,7 @@
 @section('page-title', __('ui.operating_entries'))
 
 @section('content')
+@section('page-errors', '1')
 @php
     $money = fn ($value) => \App\Support\Money::format((string) $value);
 @endphp
