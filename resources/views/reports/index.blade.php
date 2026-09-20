@@ -37,50 +37,42 @@
                 <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.to_date') }}</label>
                 <input class="field" type="date" name="to" value="{{ $filters['to'] }}">
             </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.product') }}</label>
-                <select class="field" name="product_id">
-                    <option value="">{{ __('ui.all') }}</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" @selected((string) request('product_id') === (string) $product->id)>
-                            {{ $product->localizedName() }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.category') }}</label>
-                <select class="field" name="category_id">
-                    <option value="">{{ __('ui.all') }}</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>
-                            {{ $category->localizedName() }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.customer') }}</label>
-                <select class="field" name="customer_id">
-                    <option value="">{{ __('ui.all') }}</option>
-                    @foreach($customers as $customer)
-                        <option value="{{ $customer->id }}" @selected((string) request('customer_id') === (string) $customer->id)>
-                            {{ $customer->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.supplier') }}</label>
-                <select class="field" name="supplier_id">
-                    <option value="">{{ __('ui.all') }}</option>
-                    @foreach($suppliers as $supplier)
-                        <option value="{{ $supplier->id }}" @selected((string) request('supplier_id') === (string) $supplier->id)>
-                            {{ $supplier->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+            <x-async-lookup
+                name="product_id"
+                :label="__('ui.product')"
+                :endpoint="route('reports.lookup', ['type' => 'product'])"
+                :selected-value="$selectedFilters['product_id']['id'] ?? ''"
+                :selected-label="$selectedFilters['product_id']['label'] ?? ''"
+                :selected-meta="$selectedFilters['product_id']['meta'] ?? ''"
+                :placeholder="__('ui.search_product_filter')"
+            />
+            <x-async-lookup
+                name="category_id"
+                :label="__('ui.category')"
+                :endpoint="route('reports.lookup', ['type' => 'category'])"
+                :selected-value="$selectedFilters['category_id']['id'] ?? ''"
+                :selected-label="$selectedFilters['category_id']['label'] ?? ''"
+                :selected-meta="$selectedFilters['category_id']['meta'] ?? ''"
+                :placeholder="__('ui.search_category_filter')"
+            />
+            <x-async-lookup
+                name="customer_id"
+                :label="__('ui.customer')"
+                :endpoint="route('reports.lookup', ['type' => 'customer'])"
+                :selected-value="$selectedFilters['customer_id']['id'] ?? ''"
+                :selected-label="$selectedFilters['customer_id']['label'] ?? ''"
+                :selected-meta="$selectedFilters['customer_id']['meta'] ?? ''"
+                :placeholder="__('ui.search_customer_filter')"
+            />
+            <x-async-lookup
+                name="supplier_id"
+                :label="__('ui.supplier')"
+                :endpoint="route('reports.lookup', ['type' => 'supplier'])"
+                :selected-value="$selectedFilters['supplier_id']['id'] ?? ''"
+                :selected-label="$selectedFilters['supplier_id']['label'] ?? ''"
+                :selected-meta="$selectedFilters['supplier_id']['meta'] ?? ''"
+                :placeholder="__('ui.search_supplier_filter')"
+            />
             <div class="md:col-span-2 xl:col-span-6 flex justify-end gap-2">
                 <a class="btn-secondary" href="{{ route('reports.index') }}">{{ __('ui.reset') }}</a>
                 <button class="btn-primary" type="submit">{{ __('ui.apply_filters') }}</button>
