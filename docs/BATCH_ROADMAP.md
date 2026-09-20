@@ -14,7 +14,7 @@
 12. ✅ Printing, Barcodes, Import/Export & Settings
 13. ✅ Security, Performance & Concurrency Hardening
 14. ✅ Final Golden-Path QA & Production Readiness
-15. 🚧 Operational Completeness, UI/UX & Performance
+15. ✅ Operational Completeness, UI/UX & Performance
 
 Each batch is implemented on an isolated branch, lightly verified during development, and subjected to broader end-to-end reconciliation in final QA.
 
@@ -24,4 +24,4 @@ Each batch is implemented on an isolated branch, lightly verified during develop
 - Finish user/access management, audit-log viewing, terminal management and a dedicated operating expense/income ledger.
 - Reduce repeated authorization queries by reusing loaded role/permission relationships during a request.
 - Modernize the responsive application shell, navigation, dashboard and administration surfaces without changing financial-domain rules.
-- Validate new surfaces on the same SQLite/MySQL CI matrix before merging.
+- Validate new surfaces on the same SQLite/MySQL CI matrix before merging. ✅ 112 tests / 712 assertions on each database engine.
