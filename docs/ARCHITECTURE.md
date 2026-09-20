@@ -331,3 +331,4 @@ Batch 17 exposes the existing RBAC model through a controlled owner-only adminis
 - Built-in role records cannot be deleted and custom roles cannot be deleted while assigned to users.
 - Role create/update/delete operations write audit evidence.
 - Locale switching uses an explicit English / Dari / Pashto dropdown on authenticated and guest surfaces; selection continues through the existing locale controller and user preference persistence.
+- Batch 17 validation: 120 tests / 779 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.
