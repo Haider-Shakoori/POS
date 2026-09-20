@@ -166,7 +166,8 @@
                                 method="POST"
                                 action="{{ route('admin.roles.destroy', $role) }}"
                                 class="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800"
-                                onsubmit="return confirm(@js(__('ui.delete_role_confirm')))"
+                                x-data='{ confirmMessage: @js(__('ui.delete_role_confirm')) }'
+                                @submit="if (! confirm(confirmMessage)) $event.preventDefault()"
                             >
                                 @csrf
                                 @method('DELETE')
