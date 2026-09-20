@@ -294,3 +294,17 @@ Batch 13 hardens the production boundary without changing AFN-only, no-tax, FIFO
 - repository/application readiness does not substitute for deployment operations: production still requires HTTPS, production secrets, APP_DEBUG=false, backups, durable infrastructure and a controlled migration/deployment procedure.
 
 Batch 14 completes the planned development roadmap and establishes the tested release baseline for production deployment.
+
+
+## Operational administration and presentation
+
+Batch 15 closes the post-roadmap operational surface without changing financial-domain semantics:
+
+- User and role administration is permission-protected; only an owner may assign the owner role, self-deactivation is blocked, and at least one active owner must remain.
+- Audit logs have a read-only filtered administration surface backed by the existing append-only audit evidence.
+- POS terminals can be created, renamed and activated/deactivated; a terminal with an open cashier shift cannot be deactivated.
+- Operating expenses and other income have a dedicated paginated ledger while continuing to post through the existing immutable OperatingEntryService and cash-movement rules.
+- The dashboard exposes lightweight operational KPIs and recent activity rather than development-roadmap state. It deliberately avoids building the full analytics report on every request.
+- Role/permission relationships are loaded once per authenticated User instance and reused for repeated authorization checks during the same request, reducing navigation/layout query overhead.
+- The application shell groups operational, insight and administration navigation consistently across English, Dari and Pashto while preserving RTL behavior.
+- Batch 15 validation: 112 tests / 712 assertions on both SQLite and MySQL 8.4, with migration/seed, frontend build, production cache warm-up and dependency audits green.
