@@ -1,4 +1,4 @@
-# Production Readiness — Batch 16
+# Production Readiness — Batch 17
 
 Status: **READY**
 
@@ -23,6 +23,9 @@ Status: **READY**
 - [x] Reorder, expired-batch and expiring-batch operational monitoring is database-filtered and paginated.
 - [x] Large-dataset lookup/index migration passes MySQL 8.4 fresh migration/seed.
 - [x] Cross-database activity-report ordering is deterministic for tied totals.
+- [x] Owner-only role/permission administration is available with protected owner/system-role safeguards.
+- [x] Role permission changes are audited and verified to drive the existing authorization checks.
+- [x] Language switching is an explicit English / Dari / Pashto dropdown on authenticated and login surfaces with persisted RTL locale behavior.
 
 ## Golden path
 
@@ -55,10 +58,10 @@ Run migrations with a database backup and maintenance/traffic-control plan appro
 
 ## Verified release candidate
 
-Final Batch 16 CI passed on the committed dependency lockfiles:
+Final Batch 17 CI passed on the committed dependency lockfiles:
 
-- SQLite: 115 tests passed / 740 assertions.
-- MySQL 8.4: 115 tests passed / 740 assertions.
+- SQLite: 120 tests passed / 779 assertions.
+- MySQL 8.4: 120 tests passed / 779 assertions.
 - MySQL fresh migration and seeding: passed.
 - Frontend production build: passed.
 - Laravel config, route and view cache warm-up: passed.
@@ -68,4 +71,4 @@ Final Batch 16 CI passed on the committed dependency lockfiles:
 
 ## Release decision
 
-**READY at repository/application level.** The codebase has passed the Batch 16 release gates, including the unchanged financial golden path, operational/admin regression coverage, and large-dataset lookup/pagination coverage on both supported test databases. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
+**READY at repository/application level.** The codebase has passed the Batch 17 release gates, including the unchanged financial golden path, large-dataset coverage, owner-controlled role/permission administration, and trilingual locale-dropdown regression coverage on both supported test databases. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
