@@ -26,34 +26,25 @@
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="stat-card">
             <div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.expired_batches') }}</div>
-            <div class="mt-2 text-2xl font-black">{{ $expiredBatches->count() }}</div>
+            <div class="mt-2 text-2xl font-black">{{ $expiredBatchCount }}</div>
         </div>
         <div class="stat-card">
             <div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.expiring_within_days', ['days' => $expiryDays]) }}</div>
-            <div class="mt-2 text-2xl font-black">{{ $expiringBatches->count() }}</div>
+            <div class="mt-2 text-2xl font-black">{{ $expiringBatchCount }}</div>
         </div>
         <div class="stat-card">
             <div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.reorder_suggestions') }}</div>
-            <div class="mt-2 text-2xl font-black">{{ $reorderSuggestions->count() }}</div>
+            <div class="mt-2 text-2xl font-black">{{ $reorderSuggestionCount }}</div>
         </div>
         <div class="stat-card">
             <div class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ __('ui.pending_stock_counts') }}</div>
-            <div class="mt-2 text-2xl font-black">{{ $recentCounts->where('status', 'draft')->count() }}</div>
+            <div class="mt-2 text-2xl font-black">{{ $pendingStockCount }}</div>
         </div>
     </div>
 
     <div class="grid gap-6 xl:grid-cols-2">
         @if(auth()->user()->hasPermission('inventory.count'))
-            <section
-                class="panel p-5"
-                x-data="{
-                    rows: [{ target: '', physical_quantity_base: '' }],
-                    targets: @js($countTargets->values()),
-                    add() { this.rows.push({ target: '', physical_quantity_base: '' }) },
-                    remove(index) { if (this.rows.length > 1) this.rows.splice(index, 1) },
-                    selected(value) { return this.targets.find(row => row.value === value) || null }
-                }"
-            >
+            <section class="panel p-5" x-data="inventoryTargetPicker(@js($targetSearchUrl), 'count')">
                 <h3 class="text-lg font-black">{{ __('ui.new_stock_count') }}</h3>
                 <p class="mt-1 text-xs text-slate-500">{{ __('ui.stock_count_help') }}</p>
 
@@ -61,63 +52,92 @@
                     @csrf
                     <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
 
-                    <template x-for="(row, index) in rows" :key="index">
-                        <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                            <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_auto]">
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.count_target') }}</label>
-                                    <select class="field" :name="'items['+index+'][target]'" x-model="row.target" required>
-                                        <option value="">{{ __('ui.select_product_or_batch') }}</option>
-                                        <template x-for="target in targets" :key="target.value">
-                                            <option :value="target.value" x-text="target.label"></option>
-                                        </template>
-                                    </select>
-                                    <template x-if="selected(row.target)">
-                                        <div class="mt-1 text-xs text-slate-400">
-                                            {{ __('ui.system_expected') }}:
-                                            <span x-text="selected(row.target).stock"></span>
-                                            <span x-text="selected(row.target).unit || ''"></span>
-                                            <span x-show="selected(row.target).expires_at"> · {{ __('ui.expiry_date') }}: <span x-text="selected(row.target).expires_at"></span></span>
-                                        </div>
-                                    </template>
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.physical_quantity') }}</label>
-                                    <input class="field" :name="'items['+index+'][physical_quantity_base]'" x-model="row.physical_quantity_base" inputmode="decimal" required>
-                                </div>
-                                <div class="flex items-end">
-                                    <button class="btn-secondary px-3" type="button" @click="remove(index)" :disabled="rows.length === 1">×</button>
-                                </div>
+                    <div class="relative" @click.outside="open = false">
+                        <label class="field-label">{{ __('ui.search_inventory_target') }}</label>
+                        <div class="relative">
+                            <input
+                                class="field pe-10"
+                                type="search"
+                                x-model="query"
+                                @input.debounce.250ms="search()"
+                                @focus="query.trim().length >= 2 && search()"
+                                placeholder="{{ __('ui.search_inventory_target_placeholder') }}"
+                                autocomplete="off"
+                            >
+                            <div class="pointer-events-none absolute inset-y-0 end-3 flex items-center">
+                                <svg x-show="loading" class="size-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none">
+                                    <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"></circle>
+                                    <path class="opacity-75" d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                                </svg>
                             </div>
                         </div>
-                    </template>
+                        <p class="mt-1 text-[11px] text-slate-400">{{ __('ui.async_inventory_search_help') }}</p>
 
-                    <button class="btn-secondary" type="button" @click="add()">{{ __('ui.add_count_line') }}</button>
+                        <div x-cloak x-show="open" class="absolute z-40 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            <div x-show="!loading && results.length === 0" class="px-3 py-3 text-sm text-slate-400">
+                                <span x-show="query.trim().length < 2">{{ __('ui.type_two_characters') }}</span>
+                                <span x-show="query.trim().length >= 2">{{ __('ui.no_matches_found') }}</span>
+                            </div>
+                            <template x-for="item in results" :key="item.value">
+                                <button type="button" class="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-2.5 text-start transition hover:bg-slate-50 dark:hover:bg-slate-800" @click="add(item)">
+                                    <span class="min-w-0">
+                                        <span class="block truncate text-sm font-semibold" x-text="item.label"></span>
+                                        <span class="mt-0.5 block truncate text-xs text-slate-400">
+                                            <span x-text="item.meta || ''"></span>
+                                            <span x-show="item.expires_at"> · {{ __('ui.expiry_date') }} <span x-text="item.expires_at"></span></span>
+                                        </span>
+                                    </span>
+                                    <span class="shrink-0 text-end">
+                                        <span class="block text-sm font-black" x-text="item.stock + (item.unit ? ' ' + item.unit : '')"></span>
+                                        <span class="text-[11px] font-bold text-brand-600 dark:text-brand-300">{{ __('ui.add') }}</span>
+                                    </span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="(row, index) in rows" :key="row.value">
+                            <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                                <input type="hidden" :name="'items['+index+'][target]'" :value="row.value">
+                                <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_auto]">
+                                    <div class="min-w-0">
+                                        <div class="truncate text-sm font-bold" x-text="row.label"></div>
+                                        <div class="mt-1 text-xs text-slate-400">
+                                            {{ __('ui.system_expected') }}:
+                                            <span x-text="row.stock"></span>
+                                            <span x-text="row.unit || ''"></span>
+                                            <span x-show="row.expires_at"> · {{ __('ui.expiry_date') }} <span x-text="row.expires_at"></span></span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="field-label">{{ __('ui.physical_quantity') }}</label>
+                                        <input class="field" :name="'items['+index+'][physical_quantity_base]'" x-model="row.quantity" inputmode="decimal" required>
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button class="btn-secondary px-3" type="button" @click="remove(index)" aria-label="{{ __('ui.remove') }}">×</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div x-show="rows.length === 0" class="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
+                            {{ __('ui.no_targets_selected') }}
+                        </div>
+                    </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.notes') }}</label>
+                        <label class="field-label">{{ __('ui.notes') }}</label>
                         <textarea class="field min-h-20" name="notes">{{ old('notes') }}</textarea>
                     </div>
 
-                    <button class="btn-primary w-full" type="submit">{{ __('ui.save_count_draft') }}</button>
+                    <button class="btn-primary w-full" type="submit" :disabled="rows.length === 0">{{ __('ui.save_count_draft') }}</button>
                 </form>
             </section>
         @endif
 
         @if(auth()->user()->hasPermission('inventory.writeoff'))
-            <section
-                class="panel p-5"
-                x-data="{
-                    type: 'damage',
-                    rows: [{ target: '', quantity_base: '' }],
-                    damageTargets: @js($damageTargets->values()),
-                    expiryTargets: @js($expiryTargets->values()),
-                    add() { this.rows.push({ target: '', quantity_base: '' }) },
-                    remove(index) { if (this.rows.length > 1) this.rows.splice(index, 1) },
-                    options() { return this.type === 'expiry' ? this.expiryTargets : this.damageTargets },
-                    selected(value) { return this.options().find(row => row.value === value) || null }
-                }"
-            >
+            <section class="panel p-5" x-data="inventoryTargetPicker(@js($targetSearchUrl), 'damage')">
                 <h3 class="text-lg font-black">{{ __('ui.inventory_writeoff') }}</h3>
                 <p class="mt-1 text-xs text-slate-500">{{ __('ui.inventory_writeoff_help') }}</p>
 
@@ -126,56 +146,97 @@
                     <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
 
                     <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.writeoff_type') }}</label>
-                        <select class="field" name="writeoff_type" x-model="type" @change="rows = [{ target: '', quantity_base: '' }]">
+                        <label class="field-label">{{ __('ui.writeoff_type') }}</label>
+                        <select class="field" name="writeoff_type" x-model="mode" @change="setMode($event.target.value)">
                             <option value="damage">{{ __('ui.damaged_stock') }}</option>
                             <option value="expiry">{{ __('ui.expired_stock') }}</option>
                         </select>
                     </div>
 
-                    <template x-for="(row, index) in rows" :key="index">
-                        <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                            <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_auto]">
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.stock_target') }}</label>
-                                    <select class="field" :name="'items['+index+'][target]'" x-model="row.target" required>
-                                        <option value="">{{ __('ui.select_product_or_batch') }}</option>
-                                        <template x-for="target in options()" :key="target.value">
-                                            <option :value="target.value" x-text="target.label"></option>
-                                        </template>
-                                    </select>
-                                    <template x-if="selected(row.target)">
-                                        <div class="mt-1 text-xs text-slate-400">
-                                            {{ __('ui.available_stock') }}:
-                                            <span x-text="selected(row.target).stock"></span>
-                                            <span x-text="selected(row.target).unit || ''"></span>
-                                            <span x-show="selected(row.target).expires_at"> · {{ __('ui.expiry_date') }}: <span x-text="selected(row.target).expires_at"></span></span>
-                                        </div>
-                                    </template>
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.quantity') }}</label>
-                                    <input class="field" :name="'items['+index+'][quantity_base]'" x-model="row.quantity_base" inputmode="decimal" required>
-                                </div>
-                                <div class="flex items-end">
-                                    <button class="btn-secondary px-3" type="button" @click="remove(index)" :disabled="rows.length === 1">×</button>
-                                </div>
+                    <div class="relative" @click.outside="open = false">
+                        <label class="field-label">{{ __('ui.search_inventory_target') }}</label>
+                        <div class="relative">
+                            <input
+                                class="field pe-10"
+                                type="search"
+                                x-model="query"
+                                @input.debounce.250ms="search()"
+                                @focus="query.trim().length >= 2 && search()"
+                                placeholder="{{ __('ui.search_inventory_target_placeholder') }}"
+                                autocomplete="off"
+                            >
+                            <div class="pointer-events-none absolute inset-y-0 end-3 flex items-center">
+                                <svg x-show="loading" class="size-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none">
+                                    <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"></circle>
+                                    <path class="opacity-75" d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                                </svg>
                             </div>
                         </div>
-                    </template>
+                        <p class="mt-1 text-[11px] text-slate-400">{{ __('ui.async_inventory_search_help') }}</p>
 
-                    <button class="btn-secondary" type="button" @click="add()">{{ __('ui.add_writeoff_line') }}</button>
+                        <div x-cloak x-show="open" class="absolute z-40 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            <div x-show="!loading && results.length === 0" class="px-3 py-3 text-sm text-slate-400">
+                                <span x-show="query.trim().length < 2">{{ __('ui.type_two_characters') }}</span>
+                                <span x-show="query.trim().length >= 2">{{ __('ui.no_matches_found') }}</span>
+                            </div>
+                            <template x-for="item in results" :key="item.value">
+                                <button type="button" class="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-2.5 text-start transition hover:bg-slate-50 dark:hover:bg-slate-800" @click="add(item)">
+                                    <span class="min-w-0">
+                                        <span class="block truncate text-sm font-semibold" x-text="item.label"></span>
+                                        <span class="mt-0.5 block truncate text-xs text-slate-400">
+                                            <span x-text="item.meta || ''"></span>
+                                            <span x-show="item.expires_at"> · {{ __('ui.expiry_date') }} <span x-text="item.expires_at"></span></span>
+                                        </span>
+                                    </span>
+                                    <span class="shrink-0 text-end">
+                                        <span class="block text-sm font-black" x-text="item.stock + (item.unit ? ' ' + item.unit : '')"></span>
+                                        <span class="text-[11px] font-bold text-brand-600 dark:text-brand-300">{{ __('ui.add') }}</span>
+                                    </span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="(row, index) in rows" :key="row.value">
+                            <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                                <input type="hidden" :name="'items['+index+'][target]'" :value="row.value">
+                                <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_auto]">
+                                    <div class="min-w-0">
+                                        <div class="truncate text-sm font-bold" x-text="row.label"></div>
+                                        <div class="mt-1 text-xs text-slate-400">
+                                            {{ __('ui.available_stock') }}:
+                                            <span x-text="row.stock"></span>
+                                            <span x-text="row.unit || ''"></span>
+                                            <span x-show="row.expires_at"> · {{ __('ui.expiry_date') }} <span x-text="row.expires_at"></span></span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="field-label">{{ __('ui.quantity') }}</label>
+                                        <input class="field" :name="'items['+index+'][quantity_base]'" x-model="row.quantity" inputmode="decimal" required>
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button class="btn-secondary px-3" type="button" @click="remove(index)" aria-label="{{ __('ui.remove') }}">×</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div x-show="rows.length === 0" class="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
+                            {{ __('ui.no_targets_selected') }}
+                        </div>
+                    </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.reason') }}</label>
+                        <label class="field-label">{{ __('ui.reason') }}</label>
                         <input class="field" name="reason" required maxlength="500">
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-500">{{ __('ui.notes') }}</label>
+                        <label class="field-label">{{ __('ui.notes') }}</label>
                         <textarea class="field min-h-20" name="notes"></textarea>
                     </div>
 
-                    <button class="btn-primary w-full" type="submit">{{ __('ui.post_writeoff') }}</button>
+                    <button class="btn-primary w-full" type="submit" :disabled="rows.length === 0">{{ __('ui.post_writeoff') }}</button>
                 </form>
             </section>
         @endif
@@ -224,6 +285,9 @@
                         </tbody>
                     </table>
                 </div>
+                @if($expiredBatches->hasPages())
+                    <div class="mt-3">{{ $expiredBatches->links() }}</div>
+                @endif
 
                 <h4 class="mt-6 text-sm font-black text-amber-600 dark:text-amber-300">{{ __('ui.expiring_soon') }}</h4>
                 <div class="mt-3 overflow-x-auto">
@@ -250,6 +314,9 @@
                         </tbody>
                     </table>
                 </div>
+                @if($expiringBatches->hasPages())
+                    <div class="mt-3">{{ $expiringBatches->links() }}</div>
+                @endif
             </div>
         </section>
 
@@ -292,6 +359,9 @@
                     </tbody>
                 </table>
             </div>
+            @if($reorderSuggestions->hasPages())
+                <div class="border-t border-slate-200 px-5 py-4 dark:border-slate-800">{{ $reorderSuggestions->links() }}</div>
+            @endif
         </section>
     </div>
 
