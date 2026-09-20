@@ -16,8 +16,8 @@
     <div x-cloak x-show="navOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden" @click="navOpen = false"></div>
 
     <aside
-        :class="navOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'"
-        class="fixed inset-y-0 start-0 z-50 w-[17.5rem] border-e border-slate-200 bg-white/95 shadow-2xl shadow-slate-950/5 backdrop-blur transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:shadow-none dark:border-slate-800 dark:bg-slate-900/95"
+        :class="navOpen ? 'app-sidebar-open' : 'app-sidebar-closed'"
+        class="app-sidebar fixed inset-y-0 start-0 z-50 w-[17.5rem] border-e border-slate-200 bg-white/95 shadow-2xl shadow-slate-950/5 backdrop-blur transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shadow-none dark:border-slate-800 dark:bg-slate-900/95"
     >
         <div class="flex h-full min-h-0 flex-col">
             <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 dark:border-slate-800">
