@@ -37,7 +37,7 @@ Each batch is implemented on an isolated branch, lightly verified during develop
 - Verify that large catalogs are not serialized into normal report/inventory page HTML.
 - Re-run the complete SQLite/MySQL release matrix before merge. ✅ 115 tests / 740 assertions on each database engine.
 
-17. 🚧 Roles, Permissions & Language UX
+17. ✅ Roles, Permissions & Language UX
 
 ### Batch 17 scope
 
@@ -49,4 +49,4 @@ Each batch is implemented on an isolated branch, lightly verified during develop
 - Audit role creation, permission changes and role deletion.
 - Replace the cycling locale button with a proper English / Dari / Pashto dropdown in the authenticated header and login screen.
 - Preserve persisted user locale and RTL behavior.
-- Re-run the full SQLite/MySQL release matrix before merge.
+- Re-run the full SQLite/MySQL release matrix before merge. ✅ 120 tests / 779 assertions on each database engine.
