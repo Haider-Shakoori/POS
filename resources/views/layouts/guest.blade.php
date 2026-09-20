@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>{{ __('ui.sign_in') }} · {{ config('app.name') }}</title>
+    <title>@yield('title', __('ui.sign_in')) · {{ config('app.name') }}</title>
     <script>
         if (localStorage.getItem('pos-theme') === 'dark') document.documentElement.classList.add('dark');
     </script>
