@@ -23,6 +23,7 @@ class StoreOperatingEntryRequest extends FormRequest
             'reference' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:1000'],
             'occurred_at' => ['nullable', 'date'],
+            'return_to' => ['nullable', Rule::in(['cash', 'expenses'])],
         ];
     }
 }
