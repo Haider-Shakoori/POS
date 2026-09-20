@@ -1,4 +1,4 @@
-# Production Readiness — Batch 14
+# Production Readiness — Batch 15
 
 Status: **READY**
 
@@ -14,7 +14,11 @@ Status: **READY**
 - [x] Cross-module golden-path shop day reconciles stock, cash, receivables, payables, profit and daily closing.
 - [x] `composer.lock` is committed.
 - [x] `package-lock.json` is committed.
-- [x] Batch 14 CI is green on the final locked dependency set.
+- [x] Batch 14 financial/reconciliation baseline remains green.
+- [x] Batch 15 operational/admin/UI regression suite is green on SQLite and MySQL 8.4.
+- [x] User/access management, audit-log viewing, terminal management, and dedicated operating-entry ledger are exposed through permission-protected UI.
+- [x] Repeated per-request role/permission checks reuse loaded authorization relationships.
+- [x] Final locked dependency CI is green.
 
 ## Golden path
 
@@ -47,10 +51,10 @@ Run migrations with a database backup and maintenance/traffic-control plan appro
 
 ## Verified release candidate
 
-Final Batch 14 CI passed on the committed dependency lockfiles:
+Final Batch 15 CI passed on the committed dependency lockfiles:
 
-- SQLite: 107 tests passed / 689 assertions.
-- MySQL 8.4: 107 tests passed / 689 assertions.
+- SQLite: 112 tests passed / 712 assertions.
+- MySQL 8.4: 112 tests passed / 712 assertions.
 - MySQL fresh migration and seeding: passed.
 - Frontend production build: passed.
 - Laravel config, route and view cache warm-up: passed.
@@ -60,4 +64,4 @@ Final Batch 14 CI passed on the committed dependency lockfiles:
 
 ## Release decision
 
-**READY at repository/application level.** The codebase has passed the Batch 14 release gates. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
+**READY at repository/application level.** The codebase has passed the Batch 15 release gates, including the unchanged Batch 14 financial golden path plus the operational-completeness, authorization-performance, and admin/UI regression coverage. Production deployment still requires the environment and operational controls listed above, including HTTPS, secrets, backups, infrastructure configuration and a controlled migration/deployment procedure.
