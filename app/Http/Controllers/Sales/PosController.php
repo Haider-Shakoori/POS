@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Enums\ShiftStatus;
 use App\Http\Controllers\Controller;
+use App\Models\CashierShift;
 use App\Models\PaymentMethod;
 use Illuminate\View\View;
 
@@ -12,7 +14,13 @@ class PosController extends Controller
     {
         $user = auth()->user();
 
+        $hasOpenShift = CashierShift::query()
+            ->where('user_id', $user->id)
+            ->where('status', ShiftStatus::Open->value)
+            ->exists();
+
         return view('pos.index', [
+            'hasOpenShift' => $hasOpenShift,
             'canDiscount' => $user->hasPermission('sales.discount'),
             'canOverrideMinimum' => $user->hasPermission('sales.override_min_price'),
             'canCredit' => $user->hasPermission('sales.credit'),

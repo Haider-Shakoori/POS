@@ -12,6 +12,8 @@
         customerStoreUrl: @js(route('pos.customers.store')),
         heldBaseUrl: @js(url('/pos/held-sales')),
         csrf: @js(csrf_token()),
+        hasOpenShift: @js($hasOpenShift),
+        cashDrawerUrl: @js(route('cash.index')),
         canDiscount: @js($canDiscount),
         canCredit: @js($canCredit),
         canHold: @js($canHold),
@@ -25,6 +27,7 @@
             customerSearchFailed: @js(__('ui.customer_search_failed')),
             customerCreateFailed: @js(__('ui.customer_create_failed')),
             customerRequired: @js(__('ui.customer_required_for_credit')),
+            openShiftRequired: @js(__('ui.no_open_shift_message')),
             holdFailed: @js(__('ui.hold_sale_failed')),
             heldLoadFailed: @js(__('ui.held_sales_load_failed')),
             cartMustBeEmpty: @js(__('ui.cart_must_be_empty_to_resume')),
@@ -191,6 +194,15 @@
                 </div>
 
                 <div class="space-y-5 p-5">
+                    <div x-show="checkoutMessage" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                        <span x-text="checkoutMessage"></span>
+                    </div>
+
+                    <div x-show="requiresOpenShift() && !hasOpenShift" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+                        <div class="font-bold">{{ __('ui.no_open_shift_message') }}</div>
+                        <a :href="cashDrawerUrl" class="mt-2 inline-block font-bold underline">{{ __('ui.view_cash_drawer') }}</a>
+                    </div>
+
                     <div>
                         <div class="flex items-center justify-between gap-3">
                             <label class="text-sm font-bold">{{ __('ui.customer') }}</label>
@@ -303,7 +315,7 @@
                     {{ __('ui.make_full_credit') }}
                 </button>
 
-                <button class="btn-primary mt-4 w-full py-3.5" type="button" @click="completeSale()" :disabled="submitting">
+                <button class="btn-primary mt-4 w-full py-3.5" type="button" @click="completeSale()" :disabled="submitting || (requiresOpenShift() && !hasOpenShift)">
                     <span x-show="!submitting">{{ __('ui.confirm_checkout') }}</span>
                     <span x-show="submitting">{{ __('ui.posting_sale') }}</span>
                 </button>
@@ -367,9 +379,12 @@ function posWorkspace(config) {
         searching: false,
         submitting: false,
         message: '',
+        checkoutMessage: '',
         lastSale: null,
         saleKey: null,
         holdKey: null,
+        hasOpenShift: Boolean(config.hasOpenShift),
+        cashDrawerUrl: config.cashDrawerUrl,
         canDiscount: config.canDiscount,
         canCredit: config.canCredit,
         canHold: config.canHold,
@@ -528,6 +543,7 @@ function posWorkspace(config) {
             if (!this.cart.length) return;
 
             this.message = '';
+            this.checkoutMessage = '';
             this.paymentOpen = true;
 
             if (!this.payments.length) {
@@ -613,6 +629,12 @@ function posWorkspace(config) {
 
         totalChange() {
             return this.payments.reduce((sum, payment) => sum + this.paymentChange(payment), 0);
+        },
+
+        requiresOpenShift() {
+            return this.payments.some(payment =>
+                Number(payment.amount || 0) > 0 && this.isCashPayment(payment)
+            );
         },
 
         async searchCustomers() {
@@ -830,6 +852,7 @@ function posWorkspace(config) {
             this.saleDiscount = '0.00';
             this.paymentOpen = false;
             this.payments = [];
+            this.checkoutMessage = '';
             this.selectedCustomer = null;
             this.customerQuery = '';
             this.customerResults = [];
@@ -840,8 +863,15 @@ function posWorkspace(config) {
         async completeSale() {
             if (!this.cart.length || this.submitting) return;
 
+            this.checkoutMessage = '';
+
+            if (this.requiresOpenShift() && !this.hasOpenShift) {
+                this.checkoutMessage = config.labels.openShiftRequired;
+                return;
+            }
+
             if (this.creditBalance() > 0 && !this.selectedCustomer) {
-                this.message = config.labels.customerRequired;
+                this.checkoutMessage = config.labels.customerRequired;
                 return;
             }
 
@@ -889,7 +919,7 @@ function posWorkspace(config) {
                 this.resetTransaction();
                 this.resetHoldKey();
             } catch (error) {
-                this.message = error.message || config.labels.saleFailed;
+                this.checkoutMessage = error.message || config.labels.saleFailed;
             } finally {
                 this.submitting = false;
             }
