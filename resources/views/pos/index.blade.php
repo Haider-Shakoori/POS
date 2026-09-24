@@ -280,7 +280,7 @@
                                 x-show="cart.length"
                                 type="button"
                                 class="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:hover:border-rose-900 dark:hover:bg-rose-950/30"
-                                @click="clearCart()"
+                                @click="clearSaleConfirmOpen=true"
                                 title="{{ __('ui.clear_sale') }}"
                             >
                                 <svg class="size-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -471,6 +471,29 @@
                     </button>
                 </div>
             </aside>
+        </div>
+    </div>
+
+    <div
+        x-cloak
+        x-show="clearSaleConfirmOpen"
+        x-transition.opacity
+        class="fixed inset-0 z-[75] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm"
+        @keydown.escape.window="clearSaleConfirmOpen=false"
+        @click.self="clearSaleConfirmOpen=false"
+    >
+        <div x-transition.scale.origin.center class="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-slate-900">
+            <div class="grid size-12 place-items-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300">
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6"></path>
+                </svg>
+            </div>
+            <h3 class="mt-4 text-lg font-black">{{ __('ui.clear_sale') }}</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-500">{{ __('ui.clear_sale_confirm') }}</p>
+            <div class="mt-5 grid grid-cols-2 gap-2">
+                <button type="button" class="btn-secondary min-h-11" @click="clearSaleConfirmOpen=false">{{ __('ui.cancel') }}</button>
+                <button type="button" class="min-h-11 rounded-xl bg-rose-600 px-4 text-sm font-black text-white transition hover:bg-rose-700" @click="clearCart()">{{ __('ui.clear_sale') }}</button>
+            </div>
         </div>
     </div>
 
@@ -811,6 +834,7 @@ function posWorkspace(config) {
         heldSales: [],
         heldLoading: false,
         holding: false,
+        clearSaleConfirmOpen: false,
         editingDiscountIndex: null,
         lastTouchedProductUnitId: null,
 
@@ -874,7 +898,7 @@ function posWorkspace(config) {
             this.$nextTick(() => {
                 const search = this.$refs?.search;
 
-                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && search && typeof search.focus === 'function') {
+                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && !this.clearSaleConfirmOpen && search && typeof search.focus === 'function') {
                     search.focus({preventScroll: true});
                 }
             });
@@ -895,6 +919,7 @@ function posWorkspace(config) {
                 this.paymentOpen = false;
                 this.receiptOpen = false;
                 this.heldOpen = false;
+                this.clearSaleConfirmOpen = false;
                 this.focusSearch();
                 return;
             }
@@ -902,7 +927,7 @@ function posWorkspace(config) {
             if (event.key === 'F8') {
                 event.preventDefault();
 
-                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && this.cart.length) {
+                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && !this.clearSaleConfirmOpen && this.cart.length) {
                     this.openSettlement();
                 }
 
@@ -978,12 +1003,13 @@ function posWorkspace(config) {
         },
 
         clearCart() {
-            if (!this.cart.length || !window.confirm(config.labels.clearSaleConfirm)) return;
+            if (!this.cart.length) return;
 
             this.cart = [];
             this.saleDiscount = '0.00';
             this.payments = [];
             this.checkoutMessage = '';
+            this.clearSaleConfirmOpen = false;
             this.editingDiscountIndex = null;
             this.resetSaleKey();
             this.resetHoldKey();
@@ -1408,6 +1434,7 @@ function posWorkspace(config) {
             this.customerQuery = '';
             this.customerResults = [];
             this.customerPanelOpen = false;
+            this.clearSaleConfirmOpen = false;
             this.editingDiscountIndex = null;
             this.lastTouchedProductUnitId = null;
             this.resetSaleKey();
