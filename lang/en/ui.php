@@ -432,6 +432,7 @@ return [
     'cash_drawer' => 'Cash Drawer',
     'cash_drawer_help' => 'Track the active cashier drawer from opening float through every cash inflow and outflow. Non-cash activity never changes drawer cash.',
     'shift_open' => 'Shift open',
+    'shift_not_open' => 'No open shift',
     'open_cashier_shift' => 'Open cashier shift',
     'open_shift_help' => 'Choose the terminal and enter the physical opening float. Cash transactions require an open shift.',
     'terminal' => 'Terminal',

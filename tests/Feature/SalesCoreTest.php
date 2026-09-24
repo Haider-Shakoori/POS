@@ -74,6 +74,20 @@ class SalesCoreTest extends TestCase
             ->assertJsonPath('data.0.price', '700.00');
     }
 
+    public function test_pos_catalog_browse_returns_sellable_products_without_a_query(): void
+    {
+        [$product, $piece] = $this->makeProduct(sku: 'POS-BROWSE');
+
+        $this->actingAs($this->owner)
+            ->getJson(route('pos.products.search'))
+            ->assertOk()
+            ->assertJsonFragment([
+                'product_id' => $product->id,
+                'product_unit_id' => $piece->id,
+                'name' => $product->name_en,
+            ]);
+    }
+
     public function test_multilingual_product_search_finds_dari_name(): void
     {
         [$product] = $this->makeProduct(sku: 'DARI-SEARCH');
