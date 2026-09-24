@@ -54,4 +54,30 @@ class PosCheckoutFeedbackTest extends TestCase
             ->assertOk()
             ->assertSee('hasOpenShift: true', false);
     }
+
+    public function test_pos_uses_guarded_search_focus_and_cashier_shortcuts(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->roles()->attach(Role::query()->where('name', 'owner')->firstOrFail());
+
+        $this->withoutVite();
+
+        $this->actingAs($owner)
+            ->get(route('pos.index'))
+            ->assertOk()
+            ->assertSee('x-init="focusSearch()"', false)
+            ->assertSee('@keydown.window="handleShortcut($event)"', false)
+            ->assertSee('this.$refs?.search', false)
+            ->assertDontSee('$refs.search.focus()', false)
+            ->assertSee("event.key === 'F2'", false)
+            ->assertSee("event.key === 'F8'", false)
+            ->assertSee("event.key === 'F9'", false)
+            ->assertSee("event.ctrlKey", false)
+            ->assertSee("event.key === 'Enter'", false)
+            ->assertSee('Shift+F9', false)
+            ->assertSee('Ctrl+Enter', false);
+    }
+
 }
