@@ -132,6 +132,10 @@ class SalesCoreTest extends TestCase
 
         $sale = Sale::query()->firstOrFail();
 
+        $response
+            ->assertJsonPath('sale.receipt_url', route('sales.receipt', $sale))
+            ->assertJsonPath('sale.receipt_print_url', route('sales.receipt', ['sale' => $sale, 'autoprint' => 1]));
+
         $this->assertSame('60.00', $sale->subtotal);
         $this->assertSame('60.00', $sale->net_total);
         $this->assertSame('20.00', $sale->cogs_total);
