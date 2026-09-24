@@ -12,11 +12,11 @@ class ProductSearchController extends Controller
     public function __invoke(Request $request, ProductSearchService $search): JsonResponse
     {
         $request->validate([
-            'q' => ['required', 'string', 'max:191'],
+            'q' => ['nullable', 'string', 'max:191'],
         ]);
 
         return response()->json([
-            'data' => $search->search((string) $request->input('q')),
+            'data' => $search->search((string) $request->input('q', '')),
         ]);
     }
 }
