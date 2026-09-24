@@ -50,7 +50,7 @@
                                 :class="hasOpenShift ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900' : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900'"
                             >
                                 <span class="size-1.5 rounded-full" :class="hasOpenShift ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-                                <span x-text="hasOpenShift ? @js(__('ui.shift_open')) : @js(__('ui.current_shift'))"></span>
+                                <span x-text="hasOpenShift ? @js(__('ui.shift_open')) : @js(__('ui.shift_closed'))"></span>
                             </span>
                         </div>
                         <div class="mt-0.5 text-xs text-slate-500">{{ __('ui.pos_server_totals_hint') }}</div>
