@@ -222,9 +222,56 @@
                                     <span>{{ __('ui.quantity') }}</span>
                                 </span>
                             </div>
-                            <div class="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs dark:bg-slate-800/70">
-                                <span class="grid size-5 shrink-0 place-items-center rounded-lg bg-white text-[10px] font-black text-slate-500 shadow-sm dark:bg-slate-900">C</span>
-                                <span class="truncate font-bold text-slate-600 dark:text-slate-300" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></span>
+                            <div class="relative mt-2" @click.outside="customerPanelOpen=false">
+                                <button
+                                    type="button"
+                                    class="inline-flex max-w-full items-center gap-2 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs transition hover:bg-slate-100 dark:bg-slate-800/70 dark:hover:bg-slate-800"
+                                    @click="customerPanelOpen=!customerPanelOpen"
+                                >
+                                    <span class="grid size-5 shrink-0 place-items-center rounded-lg bg-white text-[10px] font-black text-slate-500 shadow-sm dark:bg-slate-900">C</span>
+                                    <span class="truncate font-bold text-slate-600 dark:text-slate-300" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></span>
+                                    <svg class="size-3.5 shrink-0 text-slate-400 transition" :class="customerPanelOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path d="m6 9 6 6 6-6"></path>
+                                    </svg>
+                                </button>
+
+                                <div
+                                    x-cloak
+                                    x-show="customerPanelOpen"
+                                    x-transition.origin.top.left
+                                    class="absolute start-0 top-full z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-950/10 dark:border-slate-700 dark:bg-slate-900"
+                                >
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{{ __('ui.customer') }}</div>
+                                        <button x-show="selectedCustomer" type="button" class="text-[10px] font-black text-rose-600 hover:underline" @click="clearCustomer()">{{ __('ui.remove_customer') }}</button>
+                                    </div>
+
+                                    <div class="relative mt-2">
+                                        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-slate-400">⌕</div>
+                                        <input
+                                            class="field h-10 ps-9 text-xs"
+                                            x-model="customerQuery"
+                                            @input.debounce.250ms="searchCustomers()"
+                                            placeholder="{{ __('ui.search_customer_pos') }}"
+                                        >
+                                    </div>
+
+                                    <div x-show="customerResults.length" class="mt-2 max-h-52 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                                        <template x-for="customer in customerResults" :key="customer.id">
+                                            <button type="button" class="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-start last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" @click="selectCustomer(customer)">
+                                                <div class="min-w-0">
+                                                    <div class="truncate text-xs font-black" x-text="customer.name"></div>
+                                                    <div class="mt-0.5 truncate text-[10px] text-slate-400" x-text="customer.phone || '—'"></div>
+                                                </div>
+                                                <div class="shrink-0 text-[10px] font-bold text-slate-400" x-text="money(customer.current_balance)"></div>
+                                            </button>
+                                        </template>
+                                    </div>
+
+                                    <div x-show="!customerQuery && !selectedCustomer" class="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[10px] font-medium text-slate-400 dark:bg-slate-800/60">
+                                        {{ __('ui.walk_in_customer') }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -757,6 +804,7 @@ function posWorkspace(config) {
         customerResults: [],
         customerCreateOpen: false,
         customerCreating: false,
+        customerPanelOpen: false,
         newCustomer: {name: '', phone: '', credit_limit: '0.00'},
         receiptOpen: false,
         heldOpen: false,
@@ -1151,12 +1199,14 @@ function posWorkspace(config) {
             this.selectedCustomer = customer;
             this.customerQuery = '';
             this.customerResults = [];
+            this.customerPanelOpen = false;
         },
 
         clearCustomer() {
             this.selectedCustomer = null;
             this.customerQuery = '';
             this.customerResults = [];
+            this.customerPanelOpen = false;
         },
 
         async createCustomer() {
@@ -1357,6 +1407,7 @@ function posWorkspace(config) {
             this.selectedCustomer = null;
             this.customerQuery = '';
             this.customerResults = [];
+            this.customerPanelOpen = false;
             this.editingDiscountIndex = null;
             this.lastTouchedProductUnitId = null;
             this.resetSaleKey();
