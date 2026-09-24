@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.pos')
 
 @section('title', __('ui.point_of_sale'))
 @section('page-title', __('ui.point_of_sale'))
@@ -35,9 +35,9 @@
     })"
     x-init="focusSearch()"
     @keydown.window="handleShortcut($event)"
-    class="-m-4 min-h-[calc(100vh-4rem)] overflow-hidden bg-slate-100 sm:-m-6 lg:-m-8 dark:bg-slate-950"
+    class="h-screen overflow-hidden bg-slate-100 dark:bg-slate-950"
 >
-    <div class="flex min-h-[calc(100vh-4rem)] flex-col">
+    <div class="flex h-screen min-h-0 flex-col">
         <div class="border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-3">
@@ -58,6 +58,18 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                    <a href="{{ route('dashboard') }}" class="btn-secondary hidden min-h-10 items-center gap-2 px-3 sm:inline-flex">
+                        <svg class="size-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="m15 18-6-6 6-6"></path>
+                        </svg>
+                        <span>{{ __('ui.back') }}</span>
+                    </a>
+                    <button type="button" class="btn-secondary min-h-10 gap-2 px-3" @click="$dispatch('open-pos-menu')">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M4 7h16M4 12h16M4 17h16"></path>
+                        </svg>
+                        <span class="hidden sm:inline">{{ __('ui.open_navigation') }}</span>
+                    </button>
                     <button
                         x-show="canHold"
                         type="button"
@@ -194,7 +206,7 @@
                 </div>
             </section>
 
-            <aside class="flex min-h-0 flex-col bg-white xl:max-h-[calc(100vh-4rem)] dark:bg-slate-900">
+            <aside class="flex min-h-0 flex-col bg-white xl:max-h-screen dark:bg-slate-900">
                 <div class="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-slate-800">
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0">
@@ -589,6 +601,7 @@ function posWorkspace(config) {
         customerCreateOpen: false,
         customerCreating: false,
         newCustomer: {name: '', phone: '', credit_limit: '0.00'},
+        receiptOpen: false,
         heldOpen: false,
         heldSales: [],
         heldLoading: false,
@@ -654,7 +667,7 @@ function posWorkspace(config) {
             this.$nextTick(() => {
                 const search = this.$refs?.search;
 
-                if (!this.paymentOpen && !this.heldOpen && search && typeof search.focus === 'function') {
+                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && search && typeof search.focus === 'function') {
                     search.focus({preventScroll: true});
                 }
             });
@@ -673,6 +686,7 @@ function posWorkspace(config) {
             if (event.key === 'F2') {
                 event.preventDefault();
                 this.paymentOpen = false;
+                this.receiptOpen = false;
                 this.heldOpen = false;
                 this.focusSearch();
                 return;
@@ -681,7 +695,7 @@ function posWorkspace(config) {
             if (event.key === 'F8') {
                 event.preventDefault();
 
-                if (!this.paymentOpen && !this.heldOpen && this.cart.length) {
+                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && this.cart.length) {
                     this.openSettlement();
                 }
 
@@ -691,7 +705,7 @@ function posWorkspace(config) {
             if (event.key === 'F9' && event.shiftKey) {
                 event.preventDefault();
 
-                if (this.canHold && !this.paymentOpen) {
+                if (this.canHold && !this.paymentOpen && !this.receiptOpen) {
                     this.openHeldSales();
                 }
 
@@ -701,7 +715,7 @@ function posWorkspace(config) {
             if (event.key === 'F9') {
                 event.preventDefault();
 
-                if (this.canHold && !this.paymentOpen && !this.heldOpen && this.cart.length && !this.holding) {
+                if (this.canHold && !this.paymentOpen && !this.receiptOpen && !this.heldOpen && this.cart.length && !this.holding) {
                     this.holdCurrentSale();
                 }
 
@@ -1119,6 +1133,20 @@ function posWorkspace(config) {
             return new Date(value).toLocaleString();
         },
 
+        closeReceipt() {
+            this.receiptOpen = false;
+            this.focusSearch();
+        },
+
+        printReceipt() {
+            const frame = this.$refs?.receiptFrame;
+
+            if (frame?.contentWindow) {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            }
+        },
+
         resetTransaction() {
             this.cart = [];
             this.saleDiscount = '0.00';
@@ -1190,6 +1218,7 @@ function posWorkspace(config) {
                 this.message = '';
                 this.resetTransaction();
                 this.resetHoldKey();
+                this.receiptOpen = true;
             } catch (error) {
                 this.checkoutMessage = error.message || config.labels.saleFailed;
             } finally {
