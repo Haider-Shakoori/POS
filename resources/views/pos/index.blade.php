@@ -31,6 +31,7 @@
             holdFailed: @js(__('ui.hold_sale_failed')),
             heldLoadFailed: @js(__('ui.held_sales_load_failed')),
             cartMustBeEmpty: @js(__('ui.cart_must_be_empty_to_resume')),
+            clearSaleConfirm: @js(__('ui.clear_sale_confirm')),
         }
     })"
     x-init="focusSearch()"
@@ -207,99 +208,196 @@
             </section>
 
             <aside class="flex min-h-0 flex-col bg-white xl:max-h-screen dark:bg-slate-900">
-                <div class="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-slate-800">
-                    <div class="flex items-center justify-between gap-3">
+                <div class="border-b border-slate-200 bg-white px-4 py-3.5 sm:px-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-base font-black">{{ __('ui.current_sale') }}</h3>
-                                <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-black text-brand-700 dark:bg-brand-950/50 dark:text-brand-300"><span x-text="cart.length"></span> {{ __('ui.items') }}</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-base font-black tracking-tight">{{ __('ui.current_sale') }}</h3>
+                                <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 text-[10px] font-black text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
+                                    <span x-text="cart.length"></span>
+                                    <span>{{ __('ui.items') }}</span>
+                                </span>
+                                <span x-show="cart.length" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                    <span x-text="formatQty(cartQuantity())"></span>
+                                    <span>{{ __('ui.quantity') }}</span>
+                                </span>
                             </div>
-                            <div class="mt-1 truncate text-xs font-medium text-slate-500" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></div>
+                            <div class="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs dark:bg-slate-800/70">
+                                <span class="grid size-5 shrink-0 place-items-center rounded-lg bg-white text-[10px] font-black text-slate-500 shadow-sm dark:bg-slate-900">C</span>
+                                <span class="truncate font-bold text-slate-600 dark:text-slate-300" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></span>
+                            </div>
                         </div>
 
-                        <button
-                            x-show="canHold"
-                            class="grid size-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:hover:border-brand-800 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
-                            type="button"
-                            @click="openHeldSales()"
-                            title="{{ __('ui.held_sales') }}"
-                        >
-                            <span class="text-lg">⏸</span>
-                        </button>
+                        <div class="flex shrink-0 items-center gap-1.5">
+                            <button
+                                x-show="cart.length"
+                                type="button"
+                                class="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:hover:border-rose-900 dark:hover:bg-rose-950/30"
+                                @click="clearCart()"
+                                title="{{ __('ui.clear_sale') }}"
+                            >
+                                <svg class="size-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6"></path>
+                                </svg>
+                            </button>
+                            <button
+                                x-show="canHold"
+                                class="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:hover:border-brand-800 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+                                type="button"
+                                @click="openHeldSales()"
+                                title="{{ __('ui.held_sales') }}"
+                            >
+                                <span class="text-lg">⏸</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="min-h-0 flex-1 overflow-y-auto">
+                <div x-ref="cartScroller" class="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 dark:bg-slate-950/35">
                     <div x-show="!cart.length" class="grid min-h-[24rem] place-items-center px-6 py-10 text-center">
                         <div class="max-w-xs">
-                            <div class="mx-auto grid size-16 place-items-center rounded-3xl bg-slate-100 text-3xl text-slate-300 dark:bg-slate-800 dark:text-slate-600">▤</div>
+                            <div class="mx-auto grid size-16 place-items-center rounded-3xl bg-white text-3xl text-slate-300 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-600 dark:ring-slate-800">▤</div>
                             <h4 class="mt-4 font-black">{{ __('ui.cart_empty') }}</h4>
                             <p class="mt-2 text-xs leading-5 text-slate-500">{{ __('ui.pos_enter_hint') }}</p>
                         </div>
                     </div>
 
-                    <div x-show="cart.length" class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <div x-show="cart.length" class="space-y-2.5 p-3 sm:p-4">
                         <template x-for="(item,index) in cart" :key="item.product_unit_id">
-                            <div class="px-4 py-4 sm:px-5">
+                            <article
+                                :data-cart-item="item.product_unit_id"
+                                class="rounded-2xl border bg-white p-3.5 shadow-sm transition dark:bg-slate-900"
+                                :class="[
+                                    lastTouchedProductUnitId === item.product_unit_id
+                                        ? 'border-brand-400 ring-2 ring-brand-400/20 dark:border-brand-600'
+                                        : 'border-slate-200 dark:border-slate-800',
+                                    isOverStock(item)
+                                        ? 'border-rose-300 bg-rose-50/40 dark:border-rose-900 dark:bg-rose-950/10'
+                                        : ''
+                                ]"
+                            >
                                 <div class="flex items-start gap-3">
-                                    <div class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-xs font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300" x-text="String(item.name || '?').trim().charAt(0).toUpperCase()"></div>
+                                    <div class="relative grid size-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        <span x-text="String(item.name || '?').trim().charAt(0).toUpperCase()"></span>
+                                        <span class="absolute -start-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-slate-950 text-[9px] font-black text-white shadow dark:bg-white dark:text-slate-950" x-text="index + 1"></span>
+                                    </div>
+
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="min-w-0">
-                                                <div class="truncate text-sm font-black" x-text="item.name"></div>
-                                                <div class="mt-0.5 text-[11px] text-slate-400"><span x-text="item.unit"></span> · <span x-text="money(item.price)"></span></div>
+                                                <div class="truncate text-sm font-black leading-5" x-text="item.name"></div>
+                                                <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] font-medium text-slate-400">
+                                                    <span x-text="item.sku"></span>
+                                                    <span>·</span>
+                                                    <span x-text="item.unit"></span>
+                                                    <template x-if="item.track_stock">
+                                                        <span
+                                                            class="rounded-md px-1.5 py-0.5 font-bold"
+                                                            :class="isOverStock(item) ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+                                                        >{{ __('ui.available') }}: <span x-text="formatQty(item.available_quantity)"></span></span>
+                                                    </template>
+                                                </div>
                                             </div>
-                                            <button type="button" class="grid size-8 shrink-0 place-items-center rounded-lg text-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30" @click="removeItem(index)">×</button>
+
+                                            <div class="shrink-0 text-end">
+                                                <div class="text-base font-black tracking-tight" x-text="money(lineNet(item))"></div>
+                                                <div class="mt-0.5 text-[10px] text-slate-400">{{ __('ui.line_total') }}</div>
+                                            </div>
                                         </div>
 
-                                        <div class="mt-3 flex items-center justify-between gap-3">
-                                            <div class="inline-grid grid-cols-[2.4rem_4.25rem_2.4rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                                                <button type="button" class="grid h-10 place-items-center text-lg font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white" @click="changeQty(index,-1)">−</button>
-                                                <input class="h-10 w-full border-x border-slate-200 bg-transparent text-center text-sm font-black outline-none dark:border-slate-700" x-model="item.quantity" @change="normalizeQty(index)" :step="item.decimal_places > 0 ? Math.pow(10,-item.decimal_places) : 1" inputmode="decimal">
-                                                <button type="button" class="grid h-10 place-items-center text-lg font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white" @click="changeQty(index,1)">+</button>
+                                        <div x-show="isOverStock(item)" class="mt-2 rounded-lg bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                                            {{ __('ui.available') }}: <span x-text="formatQty(item.available_quantity)"></span>
+                                        </div>
+
+                                        <div class="mt-3 flex items-end justify-between gap-3">
+                                            <div>
+                                                <div class="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{{ __('ui.quantity') }}</div>
+                                                <div class="inline-grid grid-cols-[2.65rem_4.6rem_2.65rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                                                    <button type="button" class="grid h-11 place-items-center text-xl font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 active:bg-slate-200 dark:hover:bg-slate-800 dark:hover:text-white" @click="changeQty(index,-1)" aria-label="Decrease quantity">−</button>
+                                                    <input class="h-11 w-full border-x border-slate-200 bg-transparent text-center text-sm font-black outline-none focus:bg-brand-50/50 dark:border-slate-700 dark:focus:bg-brand-950/20" x-model="item.quantity" @change="normalizeQty(index)" :step="item.decimal_places > 0 ? Math.pow(10,-item.decimal_places) : 1" inputmode="decimal">
+                                                    <button type="button" class="grid h-11 place-items-center text-xl font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 active:bg-slate-200 dark:hover:bg-slate-800 dark:hover:text-white" @click="changeQty(index,1)" aria-label="Increase quantity">+</button>
+                                                </div>
                                             </div>
-                                            <div class="text-end">
-                                                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ __('ui.line_total') }}</div>
-                                                <div class="mt-0.5 text-sm font-black" x-text="money(lineSubtotal(item))"></div>
+
+                                            <div class="flex items-end gap-2">
+                                                <div class="text-end">
+                                                    <div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{{ __('ui.sale_price') }}</div>
+                                                    <div class="mt-1 text-xs font-black text-slate-600 dark:text-slate-300" x-text="money(item.price)"></div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    class="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:hover:border-rose-900 dark:hover:bg-rose-950/30"
+                                                    @click="removeItem(index)"
+                                                    title="{{ __('ui.remove') }}"
+                                                >
+                                                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path>
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </div>
 
-                                        <div x-show="canDiscount" class="mt-3 flex items-center gap-2">
-                                            <span class="shrink-0 text-[11px] font-bold text-slate-400">{{ __('ui.line_discount_afn') }}</span>
-                                            <input class="h-9 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-end text-xs font-bold outline-none transition focus:border-brand-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900" x-model="item.line_discount_amount" inputmode="decimal" min="0">
+                                        <div x-show="canDiscount" class="mt-3 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 text-[10px] font-black transition"
+                                                    :class="Number(item.line_discount_amount || 0) > 0 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200'"
+                                                    @click="editingDiscountIndex = editingDiscountIndex === index ? null : index"
+                                                >
+                                                    <span>{{ __('ui.discount') }}</span>
+                                                    <span x-show="Number(item.line_discount_amount || 0) > 0" x-text="'− ' + money(item.line_discount_amount)"></span>
+                                                </button>
+                                                <div class="text-[10px] font-bold text-slate-400">
+                                                    <span x-text="formatQty(item.quantity)"></span> × <span x-text="money(item.price)"></span>
+                                                </div>
+                                            </div>
+
+                                            <div x-show="editingDiscountIndex === index" x-transition class="mt-2 flex items-center gap-2">
+                                                <label class="shrink-0 text-[10px] font-bold text-slate-500">{{ __('ui.line_discount_afn') }}</label>
+                                                <input class="h-9 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-end text-xs font-black outline-none transition focus:border-brand-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900" x-model="item.line_discount_amount" inputmode="decimal" min="0" @keydown.enter.prevent="editingDiscountIndex=null">
+                                                <button type="button" class="grid size-9 place-items-center rounded-xl bg-slate-100 text-sm font-black text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700" @click="editingDiscountIndex=null">✓</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </article>
                         </template>
                     </div>
                 </div>
 
-                <div class="border-t border-slate-200 bg-slate-50/80 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-950/60">
-                    <div x-show="canDiscount" class="mb-3">
-                        <div class="flex items-center justify-between gap-3">
-                            <label class="text-xs font-bold text-slate-500">{{ __('ui.sale_discount_afn') }}</label>
-                            <input class="h-9 w-28 rounded-xl border border-slate-200 bg-white px-3 text-end text-xs font-black outline-none transition focus:border-brand-400 dark:border-slate-700 dark:bg-slate-900" x-model="saleDiscount" inputmode="decimal" min="0">
+                <div class="shrink-0 border-t border-slate-200 bg-white p-4 shadow-[0_-10px_30px_rgba(15,23,42,0.05)] sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="rounded-2xl bg-slate-50 p-3.5 dark:bg-slate-950/60">
+                        <div class="space-y-2 text-xs">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span>{{ __('ui.subtotal') }}</span>
+                                <strong class="text-slate-700 dark:text-slate-200" x-text="money(subtotal())"></strong>
+                            </div>
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span>{{ __('ui.discount') }}</span>
+                                <strong :class="totalDiscount() > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-slate-700 dark:text-slate-200'" x-text="'− ' + money(totalDiscount())"></strong>
+                            </div>
+                        </div>
+
+                        <div x-show="canDiscount" class="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+                            <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{{ __('ui.sale_discount_afn') }}</label>
+                            <div class="relative">
+                                <input class="h-9 w-28 rounded-xl border border-slate-200 bg-white px-3 pe-7 text-end text-xs font-black outline-none transition focus:border-brand-400 dark:border-slate-700 dark:bg-slate-900" x-model="saleDiscount" inputmode="decimal" min="0">
+                                <span class="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">؋</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="space-y-2 text-sm">
-                        <div class="flex items-center justify-between text-slate-500">
-                            <span>{{ __('ui.subtotal') }}</span>
-                            <strong class="font-bold text-slate-700 dark:text-slate-200" x-text="money(subtotal())"></strong>
-                        </div>
-                        <div class="flex items-center justify-between text-slate-500">
-                            <span>{{ __('ui.discount') }}</span>
-                            <strong class="font-bold text-slate-700 dark:text-slate-200" x-text="money(totalDiscount())"></strong>
-                        </div>
-                    </div>
-
-                    <div class="my-4 flex items-end justify-between border-y border-slate-200 py-4 dark:border-slate-800">
+                    <div class="flex items-end justify-between gap-4 px-1 py-3.5">
                         <div>
-                            <div class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{{ __('ui.total') }}</div>
-                            <div class="mt-1 text-[11px] font-medium text-slate-400"><span x-text="cartQuantity()"></span> {{ __('ui.items') }}</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{{ __('ui.total') }}</div>
+                            <div class="mt-1 text-xs font-bold text-slate-400">
+                                <span x-text="cart.length"></span> {{ __('ui.items') }}
+                                <span class="mx-1">·</span>
+                                <span x-text="formatQty(cartQuantity())"></span> {{ __('ui.quantity') }}
+                            </div>
                         </div>
-                        <div class="text-end text-3xl font-black tracking-tight text-slate-950 dark:text-white" x-text="money(total())"></div>
+                        <div class="text-end text-[2rem] font-black leading-none tracking-tight text-slate-950 dark:text-white" x-text="money(total())"></div>
                     </div>
 
                     <div x-show="canHold" class="mb-2 grid grid-cols-2 gap-2">
@@ -314,9 +412,9 @@
                         </button>
                     </div>
 
-                    <button class="group flex min-h-14 w-full items-center justify-between rounded-2xl bg-slate-950 px-4 text-white shadow-lg shadow-slate-950/10 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950 dark:hover:bg-brand-500 dark:hover:text-white" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
+                    <button class="group flex min-h-16 w-full items-center justify-between rounded-2xl bg-slate-950 px-4 text-white shadow-lg shadow-slate-950/10 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950 dark:hover:bg-brand-500 dark:hover:text-white" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
                         <div class="text-start">
-                            <div class="text-sm font-black">{{ __('ui.pay_and_complete') }}</div>
+                            <div class="text-base font-black">{{ __('ui.pay_and_complete') }}</div>
                             <div class="mt-0.5 text-[10px] font-medium opacity-60">{{ __('ui.payment_server_notice') }}</div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -665,6 +763,8 @@ function posWorkspace(config) {
         heldSales: [],
         heldLoading: false,
         holding: false,
+        editingDiscountIndex: null,
+        lastTouchedProductUnitId: null,
 
         init() {
             this.resetSaleKey();
@@ -808,11 +908,43 @@ function posWorkspace(config) {
                 this.cart.push({...product, quantity: '1', line_discount_amount: '0.00'});
             }
 
+            this.lastTouchedProductUnitId = product.product_unit_id;
             this.clearSearch();
+            this.revealCartItem(product.product_unit_id);
+
+            window.setTimeout(() => {
+                if (this.lastTouchedProductUnitId === product.product_unit_id) {
+                    this.lastTouchedProductUnitId = null;
+                }
+            }, 900);
+        },
+
+        revealCartItem(productUnitId) {
+            this.$nextTick(() => {
+                const item = document.querySelector('[data-cart-item="' + productUnitId + '"]');
+
+                if (item && typeof item.scrollIntoView === 'function') {
+                    item.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+                }
+            });
+        },
+
+        clearCart() {
+            if (!this.cart.length || !window.confirm(config.labels.clearSaleConfirm)) return;
+
+            this.cart = [];
+            this.saleDiscount = '0.00';
+            this.payments = [];
+            this.checkoutMessage = '';
+            this.editingDiscountIndex = null;
+            this.resetSaleKey();
+            this.resetHoldKey();
+            this.focusSearch();
         },
 
         removeItem(index) {
             this.cart.splice(index, 1);
+            this.editingDiscountIndex = null;
             this.focusSearch();
         },
 
@@ -843,6 +975,16 @@ function posWorkspace(config) {
 
         lineSubtotal(item) {
             return Number(item.quantity || 0) * Number(item.price || 0);
+        },
+
+        lineNet(item) {
+            return Math.max(0, this.lineSubtotal(item) - Number(item.line_discount_amount || 0));
+        },
+
+        isOverStock(item) {
+            if (!item.track_stock || item.available_quantity === null || item.available_quantity === undefined) return false;
+
+            return Number(item.quantity || 0) > Number(item.available_quantity || 0);
         },
 
         subtotal() {
