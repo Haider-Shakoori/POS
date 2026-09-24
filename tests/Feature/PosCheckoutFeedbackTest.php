@@ -81,7 +81,15 @@ class PosCheckoutFeedbackTest extends TestCase
             ->assertSee("open-pos-menu", false)
             ->assertSee("receiptOpen", false)
             ->assertSee("printReceipt()", false)
+            ->assertSee("clearCart()", false)
+            ->assertSee("clearSaleConfirmOpen", false)
+            ->assertSee("lineNet(item)", false)
+            ->assertSee("isOverStock(item)", false)
+            ->assertSee("lastTouchedProductUnitId", false)
+            ->assertSee("customerPanelOpen", false)
+            ->assertDontSee("window.confirm(", false)
             ->assertSee(__('ui.print_receipt'))
+            ->assertSee(__('ui.clear_sale'))
             ->assertDontSee('app-sidebar', false);
     }
 
