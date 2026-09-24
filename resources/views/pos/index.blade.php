@@ -937,7 +937,7 @@ function posWorkspace(config) {
             if (event.key === 'F9' && event.shiftKey) {
                 event.preventDefault();
 
-                if (this.canHold && !this.paymentOpen && !this.receiptOpen) {
+                if (this.canHold && !this.paymentOpen && !this.receiptOpen && !this.clearSaleConfirmOpen) {
                     this.openHeldSales();
                 }
 
@@ -947,7 +947,7 @@ function posWorkspace(config) {
             if (event.key === 'F9') {
                 event.preventDefault();
 
-                if (this.canHold && !this.paymentOpen && !this.receiptOpen && !this.heldOpen && this.cart.length && !this.holding) {
+                if (this.canHold && !this.paymentOpen && !this.receiptOpen && !this.heldOpen && !this.clearSaleConfirmOpen && this.cart.length && !this.holding) {
                     this.holdCurrentSale();
                 }
 
@@ -1097,6 +1097,7 @@ function posWorkspace(config) {
             this.message = '';
             this.checkoutMessage = '';
             this.heldOpen = false;
+            this.clearSaleConfirmOpen = false;
             this.paymentOpen = true;
 
             if (!this.payments.length) {
@@ -1108,6 +1109,7 @@ function posWorkspace(config) {
             if (!this.canHold) return;
 
             this.paymentOpen = false;
+            this.clearSaleConfirmOpen = false;
             this.heldOpen = true;
             this.loadHeldSales();
         },
