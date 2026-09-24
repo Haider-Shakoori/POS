@@ -31,7 +31,6 @@
             holdFailed: @js(__('ui.hold_sale_failed')),
             heldLoadFailed: @js(__('ui.held_sales_load_failed')),
             cartMustBeEmpty: @js(__('ui.cart_must_be_empty_to_resume')),
-            clearSaleConfirm: @js(__('ui.clear_sale_confirm')),
         }
     })"
     x-init="focusSearch()"
