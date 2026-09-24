@@ -548,6 +548,7 @@ function posWorkspace(config) {
         init() {
             this.resetSaleKey();
             this.resetHoldKey();
+            this.searchProducts();
 
             if (this.canHold) {
                 this.loadHeldSales();
@@ -566,11 +567,6 @@ function posWorkspace(config) {
             this.message = '';
             const term = this.query.trim();
 
-            if (!term) {
-                this.results = [];
-                return;
-            }
-
             this.searching = true;
 
             try {
@@ -583,7 +579,7 @@ function posWorkspace(config) {
                 const payload = await response.json();
                 this.results = payload.data || [];
 
-                if (autoAdd && this.results.length === 1) {
+                if (autoAdd && term && this.results.length === 1) {
                     this.addProduct(this.results[0]);
                 }
             } catch (error) {
@@ -595,6 +591,8 @@ function posWorkspace(config) {
         },
 
         acceptSearch() {
+            if (!this.query.trim()) return;
+
             if (this.results.length === 1) {
                 this.addProduct(this.results[0]);
                 return;
@@ -675,7 +673,7 @@ function posWorkspace(config) {
 
         clearSearch() {
             this.query = '';
-            this.results = [];
+            this.searchProducts();
             this.focusSearch();
         },
 
@@ -727,6 +725,10 @@ function posWorkspace(config) {
 
         subtotal() {
             return this.cart.reduce((sum, item) => sum + this.lineSubtotal(item), 0);
+        },
+
+        cartQuantity() {
+            return this.cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         },
 
         lineDiscountTotal() {
