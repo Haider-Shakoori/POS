@@ -7,7 +7,7 @@
     <style>
         :root { color-scheme: light; }
         * { box-sizing: border-box; }
-        body { margin: 0; background: #f3f4f6; color: #000; font-family: Arial, sans-serif; }
+        body { margin: 0; background: {{ $embedded ? '#f8fafc' : '#f3f4f6' }}; color: #000; font-family: Arial, sans-serif; }
         .toolbar { width: min(100%, 520px); margin: 16px auto; display: flex; justify-content: space-between; gap: 8px; }
         .toolbar a, .toolbar button { border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #111827; padding: 8px 12px; text-decoration: none; cursor: pointer; }
         .receipt { width: {{ $shop->receipt_size === '57mm' ? '57mm' : '80mm' }}; margin: 0 auto 20px; background: #fff; padding: 3mm; font-size: {{ $shop->receipt_size === '57mm' ? '9px' : '11px' }}; line-height: 1.35; }
@@ -28,10 +28,12 @@
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <a href="{{ route('sales.show', $sale) }}">{{ __('ui.back') }}</a>
-        <button type="button" onclick="window.print()">{{ __('ui.print_receipt') }}</button>
-    </div>
+    @unless($embedded)
+        <div class="toolbar">
+            <a href="{{ route('sales.show', $sale) }}">{{ __('ui.back') }}</a>
+            <button type="button" onclick="window.print()">{{ __('ui.print_receipt') }}</button>
+        </div>
+    @endunless
 
     <main class="receipt">
         <header class="center">

@@ -77,7 +77,12 @@ class PosCheckoutFeedbackTest extends TestCase
             ->assertSee("event.ctrlKey", false)
             ->assertSee("event.key === 'Enter'", false)
             ->assertSee('Shift+F9', false)
-            ->assertSee('Ctrl+Enter', false);
+            ->assertSee('Ctrl+Enter', false)
+            ->assertSee("open-pos-menu", false)
+            ->assertSee("receiptOpen", false)
+            ->assertSee("printReceipt()", false)
+            ->assertSee(__('ui.print_receipt'))
+            ->assertDontSee('app-sidebar', false);
     }
 
 }

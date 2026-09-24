@@ -57,6 +57,8 @@ class SaleController extends Controller
                 'payment_status' => $sale->payment_status->value,
                 'customer_name' => $sale->customer_name_snapshot,
                 'url' => route('sales.show', $sale),
+                'receipt_url' => route('sales.receipt', $sale),
+                'receipt_print_url' => route('sales.receipt', ['sale' => $sale, 'autoprint' => 1]),
             ],
         ], 201);
     }

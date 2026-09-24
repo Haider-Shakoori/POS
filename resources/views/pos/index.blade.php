@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.pos')
 
 @section('title', __('ui.point_of_sale'))
 @section('page-title', __('ui.point_of_sale'))
@@ -35,9 +35,9 @@
     })"
     x-init="focusSearch()"
     @keydown.window="handleShortcut($event)"
-    class="-m-4 min-h-[calc(100vh-4rem)] overflow-hidden bg-slate-100 sm:-m-6 lg:-m-8 dark:bg-slate-950"
+    class="h-screen overflow-hidden bg-slate-100 dark:bg-slate-950"
 >
-    <div class="flex min-h-[calc(100vh-4rem)] flex-col">
+    <div class="flex h-screen min-h-0 flex-col">
         <div class="border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-3">
@@ -58,6 +58,18 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                    <a href="{{ route('dashboard') }}" class="btn-secondary hidden min-h-10 items-center gap-2 px-3 sm:inline-flex">
+                        <svg class="size-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="m15 18-6-6 6-6"></path>
+                        </svg>
+                        <span>{{ __('ui.back') }}</span>
+                    </a>
+                    <button type="button" class="btn-secondary min-h-10 gap-2 px-3" @click="$dispatch('open-pos-menu')">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M4 7h16M4 12h16M4 17h16"></path>
+                        </svg>
+                        <span class="hidden sm:inline">{{ __('ui.open_navigation') }}</span>
+                    </button>
                     <button
                         x-show="canHold"
                         type="button"
@@ -194,7 +206,7 @@
                 </div>
             </section>
 
-            <aside class="flex min-h-0 flex-col bg-white xl:max-h-[calc(100vh-4rem)] dark:bg-slate-900">
+            <aside class="flex min-h-0 flex-col bg-white xl:max-h-screen dark:bg-slate-900">
                 <div class="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-slate-800">
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0">
@@ -516,6 +528,65 @@
 
     <div
         x-cloak
+        x-show="receiptOpen && lastSale"
+        x-transition.opacity
+        class="fixed inset-0 z-[95] overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-md sm:p-5"
+        @keydown.escape.window="if(receiptOpen) closeReceipt()"
+    >
+        <div class="mx-auto flex min-h-full max-w-5xl items-center justify-center">
+            <div class="grid w-full overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[minmax(0,1fr)_22rem] dark:bg-slate-900">
+                <section class="min-h-[70vh] bg-slate-100 p-3 sm:p-5 dark:bg-slate-950">
+                    <div class="h-full min-h-[66vh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-inner dark:border-slate-800">
+                        <iframe
+                            x-ref="receiptFrame"
+                            :src="lastSale?.receipt_url ? lastSale.receipt_url + '?embed=1' : 'about:blank'"
+                            class="h-[70vh] w-full bg-white"
+                            title="{{ __('ui.receipt') }}"
+                        ></iframe>
+                    </div>
+                </section>
+
+                <aside class="flex flex-col border-t border-slate-200 p-5 lg:border-s lg:border-t-0 sm:p-6 dark:border-slate-800">
+                    <div>
+                        <div class="grid size-14 place-items-center rounded-3xl bg-emerald-50 text-2xl font-black text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">✓</div>
+                        <h3 class="mt-4 text-xl font-black">{{ __('ui.sale_completed') }}</h3>
+                        <div class="mt-2 text-sm text-slate-500">
+                            <strong class="text-slate-900 dark:text-white" x-text="lastSale?.number"></strong>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/60">
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{{ __('ui.net_total') }}</div>
+                        <div class="mt-1 text-3xl font-black tracking-tight" x-text="lastSale ? money(lastSale.net_total) : ''"></div>
+                        <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
+                            <span>{{ __('ui.paid') }}</span>
+                            <strong x-text="lastSale ? money(lastSale.paid_amount) : ''"></strong>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+                            <span>{{ __('ui.balance_due') }}</span>
+                            <strong x-text="lastSale ? money(lastSale.balance_due) : ''"></strong>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto space-y-2 pt-6">
+                        <button class="btn-primary flex min-h-14 w-full items-center justify-center gap-2 text-base" type="button" @click="printReceipt()">
+                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"></path>
+                            </svg>
+                            <span>{{ __('ui.print_receipt') }}</span>
+                        </button>
+                        <a :href="lastSale?.url" class="btn-secondary flex min-h-11 w-full items-center justify-center">{{ __('ui.view_sale') }}</a>
+                        <button class="w-full rounded-xl px-4 py-3 text-sm font-black text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white" type="button" @click="closeReceipt()">
+                            {{ __('ui.back_to_pos') }}
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <div
+        x-cloak
         x-show="heldOpen"
         x-transition.opacity
         class="fixed inset-0 z-[85] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
@@ -589,6 +660,7 @@ function posWorkspace(config) {
         customerCreateOpen: false,
         customerCreating: false,
         newCustomer: {name: '', phone: '', credit_limit: '0.00'},
+        receiptOpen: false,
         heldOpen: false,
         heldSales: [],
         heldLoading: false,
@@ -654,7 +726,7 @@ function posWorkspace(config) {
             this.$nextTick(() => {
                 const search = this.$refs?.search;
 
-                if (!this.paymentOpen && !this.heldOpen && search && typeof search.focus === 'function') {
+                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && search && typeof search.focus === 'function') {
                     search.focus({preventScroll: true});
                 }
             });
@@ -673,6 +745,7 @@ function posWorkspace(config) {
             if (event.key === 'F2') {
                 event.preventDefault();
                 this.paymentOpen = false;
+                this.receiptOpen = false;
                 this.heldOpen = false;
                 this.focusSearch();
                 return;
@@ -681,7 +754,7 @@ function posWorkspace(config) {
             if (event.key === 'F8') {
                 event.preventDefault();
 
-                if (!this.paymentOpen && !this.heldOpen && this.cart.length) {
+                if (!this.paymentOpen && !this.receiptOpen && !this.heldOpen && this.cart.length) {
                     this.openSettlement();
                 }
 
@@ -691,7 +764,7 @@ function posWorkspace(config) {
             if (event.key === 'F9' && event.shiftKey) {
                 event.preventDefault();
 
-                if (this.canHold && !this.paymentOpen) {
+                if (this.canHold && !this.paymentOpen && !this.receiptOpen) {
                     this.openHeldSales();
                 }
 
@@ -701,7 +774,7 @@ function posWorkspace(config) {
             if (event.key === 'F9') {
                 event.preventDefault();
 
-                if (this.canHold && !this.paymentOpen && !this.heldOpen && this.cart.length && !this.holding) {
+                if (this.canHold && !this.paymentOpen && !this.receiptOpen && !this.heldOpen && this.cart.length && !this.holding) {
                     this.holdCurrentSale();
                 }
 
@@ -1119,6 +1192,20 @@ function posWorkspace(config) {
             return new Date(value).toLocaleString();
         },
 
+        closeReceipt() {
+            this.receiptOpen = false;
+            this.focusSearch();
+        },
+
+        printReceipt() {
+            const frame = this.$refs?.receiptFrame;
+
+            if (frame?.contentWindow) {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            }
+        },
+
         resetTransaction() {
             this.cart = [];
             this.saleDiscount = '0.00';
@@ -1190,6 +1277,7 @@ function posWorkspace(config) {
                 this.message = '';
                 this.resetTransaction();
                 this.resetHoldKey();
+                this.receiptOpen = true;
             } catch (error) {
                 this.checkoutMessage = error.message || config.labels.saleFailed;
             } finally {
