@@ -1357,6 +1357,8 @@ function posWorkspace(config) {
             this.selectedCustomer = null;
             this.customerQuery = '';
             this.customerResults = [];
+            this.editingDiscountIndex = null;
+            this.lastTouchedProductUnitId = null;
             this.resetSaleKey();
             this.focusSearch();
         },
