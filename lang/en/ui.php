@@ -51,6 +51,8 @@ return [
     'current_sale' => 'Current sale',
     'items' => 'items',
     'cart_empty' => 'Scan or search for an item to begin.',
+    'clear_sale' => 'Clear sale',
+    'clear_sale_confirm' => 'Clear the current sale? This will remove all cart items and discounts.',
     'subtotal' => 'Subtotal',
     'discount' => 'Discount',
     'total' => 'Total',
