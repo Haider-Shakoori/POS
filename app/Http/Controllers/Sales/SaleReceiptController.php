@@ -28,6 +28,7 @@ class SaleReceiptController extends Controller
             'sale' => $sale,
             'shop' => $shop,
             'autoprint' => $request->boolean('autoprint'),
+            'embedded' => $request->boolean('embed'),
         ]);
     }
 }
