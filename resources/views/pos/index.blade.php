@@ -66,7 +66,7 @@
                     >
                         <span>{{ __('ui.held_sales') }}</span>
                         <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-black dark:bg-slate-800" x-text="heldSales.length"></span>
-                        <kbd class="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-900">⇧F9</kbd>
+                        <kbd class="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-900">Shift+F9</kbd>
                     </button>
 
                     <a
