@@ -321,147 +321,196 @@
         x-cloak
         x-show="paymentOpen"
         x-transition.opacity
-        class="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
+        class="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/80 p-0 backdrop-blur-md sm:p-4"
         @keydown.escape.window="if(!submitting) paymentOpen=false"
     >
-        <div class="mx-auto my-4 grid max-w-6xl gap-4 xl:grid-cols-[1fr_24rem]" @click.outside="if(!submitting) paymentOpen=false">
-            <section class="panel overflow-hidden">
-                <div class="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
-                    <div>
-                        <h3 class="text-xl font-black">{{ __('ui.checkout_payment') }}</h3>
-                        <p class="mt-1 text-xs text-slate-500">{{ __('ui.checkout_payment_help') }}</p>
-                    </div>
-                    <button class="btn-secondary px-3" type="button" @click="paymentOpen=false" :disabled="submitting">×</button>
-                </div>
-
-                <div class="space-y-5 p-5">
-                    <div x-show="checkoutMessage" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-                        <span x-text="checkoutMessage"></span>
-                    </div>
-
-                    <div x-show="requiresOpenShift() && !hasOpenShift" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-                        <div class="font-bold">{{ __('ui.no_open_shift_message') }}</div>
-                        <a :href="cashDrawerUrl" class="mt-2 inline-block font-bold underline">{{ __('ui.view_cash_drawer') }}</a>
-                    </div>
-
-                    <div>
-                        <div class="flex items-center justify-between gap-3">
-                            <label class="text-sm font-bold">{{ __('ui.customer') }}</label>
-                            <button x-show="selectedCustomer" class="text-xs font-bold text-red-600" type="button" @click="clearCustomer()">{{ __('ui.remove_customer') }}</button>
+        <div class="mx-auto min-h-full max-w-7xl sm:flex sm:min-h-0 sm:items-center sm:py-4">
+            <div class="grid w-full overflow-hidden bg-slate-100 shadow-2xl sm:rounded-3xl lg:grid-cols-[minmax(0,1fr)_25rem] dark:bg-slate-950" @click.outside="if(!submitting) paymentOpen=false">
+                <section class="min-w-0 bg-white dark:bg-slate-900">
+                    <div class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-slate-800">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <div class="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-xl font-black text-white shadow-lg shadow-brand-600/20">؋</div>
+                            <div class="min-w-0">
+                                <h3 class="truncate text-xl font-black tracking-tight">{{ __('ui.checkout_payment') }}</h3>
+                                <p class="mt-0.5 text-xs text-slate-500">{{ __('ui.checkout_payment_help') }}</p>
+                            </div>
                         </div>
+                        <button class="grid size-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-xl text-slate-400 transition hover:bg-slate-50 hover:text-slate-950 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-white" type="button" @click="paymentOpen=false" :disabled="submitting">×</button>
+                    </div>
 
-                        <div x-show="selectedCustomer" class="mt-2 rounded-xl border border-brand-200 bg-brand-50 p-3 dark:border-brand-900 dark:bg-brand-950/30">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="max-h-[calc(100vh-6rem)] overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-8rem)]">
+                        <div class="space-y-4">
+                            <div x-show="checkoutMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+                                <span x-text="checkoutMessage"></span>
+                            </div>
+
+                            <div x-show="requiresOpenShift() && !hasOpenShift" class="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900 dark:bg-amber-950/40">
                                 <div>
-                                    <div class="font-bold" x-text="selectedCustomer?.name"></div>
-                                    <div class="mt-1 text-xs text-slate-500" x-text="selectedCustomer?.phone || '—'"></div>
+                                    <div class="text-sm font-black text-amber-800 dark:text-amber-300">{{ __('ui.no_open_shift_message') }}</div>
+                                    <div class="mt-1 text-xs text-amber-700/70 dark:text-amber-300/70">{{ __('ui.cash_tendered') }}</div>
                                 </div>
-                                <div class="text-end text-xs">
-                                    <div>{{ __('ui.current_balance') }}: <strong x-text="money(selectedCustomer?.current_balance)"></strong></div>
-                                    <div class="mt-1">{{ __('ui.credit_available') }}: <strong x-text="money(selectedCustomer?.available_credit)"></strong></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div x-show="!selectedCustomer" class="mt-2">
-                            <div class="flex gap-2">
-                                <input class="field" x-model="customerQuery" @input.debounce.250ms="searchCustomers()" placeholder="{{ __('ui.search_customer_pos') }}">
-                                <button x-show="canQuickCreateCustomers" class="btn-secondary shrink-0" type="button" @click="customerCreateOpen=!customerCreateOpen">＋</button>
+                                <a :href="cashDrawerUrl" class="inline-flex min-h-10 items-center justify-center rounded-xl bg-amber-600 px-4 text-xs font-black text-white shadow-sm hover:bg-amber-700">{{ __('ui.view_cash_drawer') }}</a>
                             </div>
 
-                            <div x-show="customerResults.length" class="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                                <template x-for="customer in customerResults" :key="customer.id">
-                                    <button type="button" class="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-start last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" @click="selectCustomer(customer)">
-                                        <div>
-                                            <div class="font-semibold" x-text="customer.name"></div>
-                                            <div class="mt-1 text-xs text-slate-500" x-text="customer.phone || '—'"></div>
-                                        </div>
-                                        <div class="text-end text-xs text-slate-500">{{ __('ui.balance') }} <strong x-text="money(customer.current_balance)"></strong></div>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-
-                        <div x-show="customerCreateOpen && canQuickCreateCustomers" class="mt-3 grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700 sm:grid-cols-3">
-                            <input class="field" x-model="newCustomer.name" placeholder="{{ __('ui.customer_name') }}">
-                            <input class="field" x-model="newCustomer.phone" placeholder="{{ __('ui.phone') }}">
-                            <input class="field" x-model="newCustomer.credit_limit" inputmode="decimal" placeholder="{{ __('ui.credit_limit') }}">
-                            <button class="btn-secondary sm:col-span-3" type="button" @click="createCustomer()" :disabled="customerCreating">
-                                <span x-show="!customerCreating">{{ __('ui.quick_create_customer') }}</span>
-                                <span x-show="customerCreating">{{ __('ui.creating') }}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="mb-3 flex items-center justify-between">
-                            <div>
-                                <h4 class="font-black">{{ __('ui.payments') }}</h4>
-                                <p class="mt-1 text-xs text-slate-500">{{ __('ui.split_payment_help') }}</p>
-                            </div>
-                            <button class="btn-secondary" type="button" @click="addPayment()">{{ __('ui.add_payment') }}</button>
-                        </div>
-
-                        <div class="space-y-3">
-                            <template x-for="(payment,index) in payments" :key="payment.key">
-                                <div class="grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700 md:grid-cols-[1.1fr_1fr_1fr_auto]">
-                                    <select class="field" x-model="payment.payment_method_id" @change="paymentMethodChanged(index)">
-                                        <template x-for="method in paymentMethods" :key="method.id">
-                                            <option :value="String(method.id)" x-text="method.name"></option>
-                                        </template>
-                                    </select>
+                            <section class="rounded-3xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-950/40">
+                                <div class="flex items-center justify-between gap-3">
                                     <div>
-                                        <label class="mb-1 block text-[11px] font-semibold text-slate-500">{{ __('ui.applied_amount') }}</label>
-                                        <input class="field" x-model="payment.amount" @input="paymentAmountChanged(index)" inputmode="decimal">
+                                        <div class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{{ __('ui.customer') }}</div>
+                                        <div class="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200" x-text="selectedCustomer?.name || @js(__('ui.walk_in_customer'))"></div>
                                     </div>
-                                    <div x-show="isCashPayment(payment)">
-                                        <label class="mb-1 block text-[11px] font-semibold text-slate-500">{{ __('ui.cash_tendered') }}</label>
-                                        <input class="field" x-model="payment.tendered_amount" inputmode="decimal">
+                                    <button x-show="selectedCustomer" class="rounded-lg px-2.5 py-1.5 text-xs font-black text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-950/30" type="button" @click="clearCustomer()">{{ __('ui.remove_customer') }}</button>
+                                </div>
+
+                                <div x-show="selectedCustomer" class="mt-4 grid gap-3 rounded-2xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-2 dark:border-brand-900 dark:bg-slate-900">
+                                    <div>
+                                        <div class="text-base font-black" x-text="selectedCustomer?.name"></div>
+                                        <div class="mt-1 text-xs text-slate-500" x-text="selectedCustomer?.phone || '—'"></div>
                                     </div>
-                                    <div x-show="!isCashPayment(payment)">
-                                        <label class="mb-1 block text-[11px] font-semibold text-slate-500">{{ __('ui.payment_reference') }}</label>
-                                        <input class="field" x-model="payment.reference">
-                                    </div>
-                                    <button type="button" class="self-end rounded-xl px-3 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" @click="removePayment(index)">×</button>
-                                    <div x-show="isCashPayment(payment) && paymentChange(payment) > 0" class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 md:col-span-4">
-                                        {{ __('ui.change') }}: <span x-text="money(paymentChange(payment))"></span>
+                                    <div class="grid grid-cols-2 gap-2 text-end text-xs">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+                                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ __('ui.current_balance') }}</div>
+                                            <strong class="mt-1 block text-sm" x-text="money(selectedCustomer?.current_balance)"></strong>
+                                        </div>
+                                        <div class="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                                            <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-300/70">{{ __('ui.credit_available') }}</div>
+                                            <strong class="mt-1 block text-sm text-emerald-700 dark:text-emerald-300" x-text="money(selectedCustomer?.available_credit)"></strong>
+                                        </div>
                                     </div>
                                 </div>
-                            </template>
 
-                            <div x-show="!payments.length" class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400 dark:border-slate-700">
-                                {{ __('ui.no_payment_credit_sale') }}
-                            </div>
+                                <div x-show="!selectedCustomer" class="mt-4">
+                                    <div class="flex gap-2">
+                                        <div class="relative min-w-0 flex-1">
+                                            <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-slate-400">⌕</div>
+                                            <input class="field ps-9" x-model="customerQuery" @input.debounce.250ms="searchCustomers()" placeholder="{{ __('ui.search_customer_pos') }}">
+                                        </div>
+                                        <button x-show="canQuickCreateCustomers" class="btn-secondary shrink-0 px-4" type="button" @click="customerCreateOpen=!customerCreateOpen">＋ {{ __('ui.add_customer') }}</button>
+                                    </div>
+
+                                    <div x-show="customerResults.length" class="mt-2 max-h-52 overflow-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                        <template x-for="customer in customerResults" :key="customer.id">
+                                            <button type="button" class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-start transition hover:bg-slate-50 dark:hover:bg-slate-800" @click="selectCustomer(customer)">
+                                                <div class="min-w-0">
+                                                    <div class="truncate font-bold" x-text="customer.name"></div>
+                                                    <div class="mt-0.5 truncate text-xs text-slate-500" x-text="customer.phone || '—'"></div>
+                                                </div>
+                                                <div class="shrink-0 text-end text-[11px] text-slate-500">{{ __('ui.balance') }} <strong x-text="money(customer.current_balance)"></strong></div>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div x-show="customerCreateOpen && canQuickCreateCustomers" class="mt-4 grid gap-3 rounded-2xl border border-dashed border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 sm:grid-cols-3">
+                                    <input class="field" x-model="newCustomer.name" placeholder="{{ __('ui.customer_name') }}">
+                                    <input class="field" x-model="newCustomer.phone" placeholder="{{ __('ui.phone') }}">
+                                    <input class="field" x-model="newCustomer.credit_limit" inputmode="decimal" placeholder="{{ __('ui.credit_limit') }}">
+                                    <button class="btn-secondary sm:col-span-3" type="button" @click="createCustomer()" :disabled="customerCreating">
+                                        <span x-show="!customerCreating">{{ __('ui.quick_create_customer') }}</span>
+                                        <span x-show="customerCreating">{{ __('ui.creating') }}</span>
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section class="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{{ __('ui.payments') }}</div>
+                                        <p class="mt-1 text-xs text-slate-500">{{ __('ui.split_payment_help') }}</p>
+                                    </div>
+                                    <button class="btn-secondary" type="button" @click="addPayment()">＋ {{ __('ui.add_payment') }}</button>
+                                </div>
+
+                                <div class="mt-4 space-y-3">
+                                    <template x-for="(payment,index) in payments" :key="payment.key">
+                                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-950/50">
+                                            <div class="grid gap-3 md:grid-cols-[1.1fr_1fr_1fr_auto] md:items-end">
+                                                <div>
+                                                    <label class="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">{{ __('ui.payment_method') }}</label>
+                                                    <select class="field" x-model="payment.payment_method_id" @change="paymentMethodChanged(index)">
+                                                        <template x-for="method in paymentMethods" :key="method.id">
+                                                            <option :value="String(method.id)" x-text="method.name"></option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">{{ __('ui.applied_amount') }}</label>
+                                                    <input class="field text-end font-black" x-model="payment.amount" @input="paymentAmountChanged(index)" inputmode="decimal">
+                                                </div>
+                                                <div x-show="isCashPayment(payment)">
+                                                    <label class="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">{{ __('ui.cash_tendered') }}</label>
+                                                    <input class="field text-end font-black" x-model="payment.tendered_amount" inputmode="decimal">
+                                                </div>
+                                                <div x-show="!isCashPayment(payment)">
+                                                    <label class="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">{{ __('ui.payment_reference') }}</label>
+                                                    <input class="field" x-model="payment.reference">
+                                                </div>
+                                                <button type="button" class="grid size-11 place-items-center rounded-xl text-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30" @click="removePayment(index)">×</button>
+                                            </div>
+                                            <div x-show="isCashPayment(payment) && paymentChange(payment) > 0" class="mt-3 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                                <span>{{ __('ui.change') }}</span>
+                                                <span x-text="money(paymentChange(payment))"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <div x-show="!payments.length" class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-400 dark:border-slate-700">
+                                        {{ __('ui.no_payment_credit_sale') }}
+                                    </div>
+                                </div>
+                            </section>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <aside class="panel h-fit p-5 xl:sticky xl:top-4">
-                <div class="space-y-3">
-                    <div class="flex justify-between text-sm"><span>{{ __('ui.total') }}</span><strong x-text="money(total())"></strong></div>
-                    <div class="flex justify-between text-sm"><span>{{ __('ui.payment_applied') }}</span><strong x-text="money(paymentAppliedTotal())"></strong></div>
-                    <div class="flex justify-between text-sm text-emerald-700 dark:text-emerald-300"><span>{{ __('ui.change') }}</span><strong x-text="money(totalChange())"></strong></div>
-                    <div class="flex justify-between border-t border-slate-200 pt-3 text-lg dark:border-slate-800">
-                        <span class="font-black">{{ __('ui.credit_balance') }}</span>
-                        <strong x-text="money(creditBalance())"></strong>
+                <aside class="flex flex-col border-t border-slate-200 bg-slate-950 text-white lg:border-s lg:border-t-0 dark:border-slate-800 dark:bg-black">
+                    <div class="border-b border-white/10 p-5 sm:p-6">
+                        <div class="text-[11px] font-black uppercase tracking-[0.18em] text-white/40">{{ __('ui.total') }}</div>
+                        <div class="mt-2 text-4xl font-black tracking-tight" x-text="money(total())"></div>
+                        <div class="mt-2 text-xs text-white/50"><span x-text="cartQuantity()"></span> {{ __('ui.items') }}</div>
                     </div>
-                </div>
 
-                <div x-show="creditBalance() > 0" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-                    {{ __('ui.credit_customer_notice') }}
-                </div>
+                    <div class="flex-1 p-5 sm:p-6">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-white/55">{{ __('ui.payment_applied') }}</span>
+                                <strong x-text="money(paymentAppliedTotal())"></strong>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-white/55">{{ __('ui.change') }}</span>
+                                <strong class="text-emerald-300" x-text="money(totalChange())"></strong>
+                            </div>
+                            <div class="h-px bg-white/10"></div>
+                            <div class="flex items-end justify-between gap-3">
+                                <span class="text-sm font-black">{{ __('ui.credit_balance') }}</span>
+                                <strong class="text-2xl font-black" :class="creditBalance() > 0 ? 'text-amber-300' : 'text-emerald-300'" x-text="money(creditBalance())"></strong>
+                            </div>
+                        </div>
 
-                <button x-show="canCredit && selectedCustomer" class="btn-secondary mt-4 w-full" type="button" @click="payments=[]">
-                    {{ __('ui.make_full_credit') }}
-                </button>
+                        <div x-show="creditBalance() > 0" class="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs leading-5 text-amber-200">
+                            {{ __('ui.credit_customer_notice') }}
+                        </div>
 
-                <button class="btn-primary mt-4 w-full py-4 text-base" type="button" @click="completeSale()" :disabled="submitting || (requiresOpenShift() && !hasOpenShift)">
-                    <span x-show="!submitting">{{ __('ui.confirm_checkout') }}</span>
-                    <span x-show="submitting">{{ __('ui.posting_sale') }}</span>
-                    <kbd x-show="!submitting" class="ms-2 rounded-md bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">Ctrl+Enter</kbd>
-                </button>
-            </aside>
+                        <button x-show="canCredit && selectedCustomer" class="mt-4 min-h-11 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black transition hover:bg-white/10" type="button" @click="payments=[]">
+                            {{ __('ui.make_full_credit') }}
+                        </button>
+                    </div>
+
+                    <div class="border-t border-white/10 p-5 sm:p-6">
+                        <button class="group flex min-h-16 w-full items-center justify-between rounded-2xl bg-brand-500 px-4 text-white shadow-xl shadow-brand-950/20 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-40" type="button" @click="completeSale()" :disabled="submitting || (requiresOpenShift() && !hasOpenShift)">
+                            <div class="text-start">
+                                <div x-show="!submitting" class="text-base font-black">{{ __('ui.confirm_checkout') }}</div>
+                                <div x-show="submitting" class="text-base font-black">{{ __('ui.posting_sale') }}</div>
+                                <div class="mt-0.5 text-[10px] font-medium text-white/65">{{ __('ui.payment_server_notice') }}</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <kbd x-show="!submitting" class="rounded-lg bg-white/15 px-2 py-1 font-mono text-[10px] font-black">Ctrl+Enter</kbd>
+                                <span x-show="!submitting" class="text-xl transition group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">→</span>
+                                <span x-show="submitting" class="size-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                            </div>
+                        </button>
+                    </div>
+                </aside>
+            </div>
         </div>
     </div>
 
