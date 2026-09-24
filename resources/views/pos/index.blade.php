@@ -33,28 +33,61 @@
             cartMustBeEmpty: @js(__('ui.cart_must_be_empty_to_resume')),
         }
     })"
-    x-init="$nextTick(() => $refs.search.focus())"
-    class="grid min-h-[calc(100vh-9rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_28rem]"
+    x-init="focusSearch()"
+    @keydown.window="handleShortcut($event)"
+    class="grid min-h-[calc(100vh-9rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]"
 >
     <section class="panel flex min-h-[36rem] flex-col overflow-hidden">
-        <div class="border-b border-slate-200 p-4 dark:border-slate-800">
-            <div class="relative">
-                <input
-                    x-ref="search"
-                    x-model="query"
-                    @input.debounce.250ms="searchProducts()"
-                    @keydown.enter.prevent="acceptSearch()"
-                    @keydown.escape.prevent="clearSearch()"
-                    class="field py-3 ps-11 pe-12"
-                    autocomplete="off"
-                    placeholder="{{ __('ui.scan_search_placeholder') }}"
-                >
-                <span class="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400">⌕</span>
-                <span x-show="searching" class="absolute end-4 top-1/2 -translate-y-1/2 animate-pulse text-xs text-slate-400">{{ __('ui.searching') }}</span>
+        <div class="border-b border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 dark:border-slate-800 dark:from-slate-900/70 dark:to-slate-900">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div class="min-w-0 flex-1">
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-xs font-black uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">{{ __('ui.point_of_sale') }}</div>
+                            <div class="mt-1 text-xs text-slate-500">{{ __('ui.pos_enter_hint') }}</div>
+                        </div>
+                        <button type="button" class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-500 shadow-sm hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-brand-700 dark:hover:text-brand-300 sm:flex" @click="focusSearch()">
+                            <kbd class="font-mono text-[11px]">F2</kbd>
+                            <span>{{ __('ui.search') }}</span>
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input
+                            x-ref="search"
+                            x-model="query"
+                            @input.debounce.250ms="searchProducts()"
+                            @keydown.enter.prevent="acceptSearch()"
+                            @keydown.escape.prevent="clearSearch()"
+                            class="field py-3.5 ps-11 pe-24 text-base shadow-sm"
+                            autocomplete="off"
+                            placeholder="{{ __('ui.scan_search_placeholder') }}"
+                        >
+                        <span class="absolute start-4 top-1/2 -translate-y-1/2 text-lg text-slate-400">⌕</span>
+                        <button x-show="query" type="button" class="absolute end-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200" @click="clearSearch()">Esc</button>
+                        <span x-show="searching" class="absolute end-12 top-1/2 -translate-y-1/2 animate-pulse text-xs text-slate-400">{{ __('ui.searching') }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 sm:flex lg:shrink-0">
+                    <button x-show="canHold" class="btn-secondary min-h-12" type="button" @click="holdCurrentSale()" :disabled="!cart.length || holding">
+                        <span class="me-2">{{ __('ui.hold_sale') }}</span>
+                        <kbd class="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] dark:bg-slate-800">F9</kbd>
+                    </button>
+                    <button class="btn-primary min-h-12" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
+                        <span class="me-2">{{ __('ui.pay_and_complete') }}</span>
+                        <kbd class="rounded-md bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">F8</kbd>
+                    </button>
+                </div>
             </div>
-            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                <span>{{ __('ui.pos_enter_hint') }}</span>
-                <span>{{ __('ui.pos_server_totals_hint') }}</span>
+
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <span class="font-semibold">{{ __('ui.pos_server_totals_hint') }}</span>
+                <span class="hidden h-4 w-px bg-slate-200 dark:bg-slate-700 sm:block"></span>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"><kbd class="font-mono font-bold">F2</kbd><span>{{ __('ui.search') }}</span></span>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"><kbd class="font-mono font-bold">F8</kbd><span>{{ __('ui.pay_and_complete') }}</span></span>
+                <span x-show="canHold" class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"><kbd class="font-mono font-bold">F9</kbd><span>{{ __('ui.hold_sale') }}</span></span>
+                <span x-show="canHold" class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"><kbd class="font-mono font-bold">Shift+F9</kbd><span>{{ __('ui.held_sales') }}</span></span>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"><kbd class="font-mono font-bold">Ctrl+Enter</kbd><span>{{ __('ui.confirm_checkout') }}</span></span>
             </div>
         </div>
 
@@ -76,7 +109,7 @@
                     <button
                         type="button"
                         @click="addProduct(product)"
-                        class="rounded-2xl border border-slate-200 p-4 text-start transition hover:border-brand-400 hover:bg-brand-50/60 dark:border-slate-800 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
+                        class="group rounded-2xl border border-slate-200 bg-white p-4 text-start shadow-sm transition hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-50/60 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
@@ -108,8 +141,8 @@
         </div>
     </section>
 
-    <aside class="panel flex min-h-[36rem] flex-col overflow-hidden">
-        <div class="border-b border-slate-200 p-5 dark:border-slate-800">
+    <aside class="panel flex min-h-[36rem] flex-col overflow-hidden xl:sticky xl:top-4 xl:max-h-[calc(100vh-10rem)]">
+        <div class="border-b border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/60">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h3 class="font-black">{{ __('ui.current_sale') }}</h3>
@@ -124,7 +157,7 @@
 
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 <template x-for="(item,index) in cart" :key="item.product_unit_id">
-                    <div class="p-4">
+                    <div class="m-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="truncate font-bold" x-text="item.name"></div>
@@ -155,22 +188,31 @@
                 <input class="field" x-model="saleDiscount" inputmode="decimal" min="0">
             </div>
 
-            <div class="flex justify-between text-sm"><span>{{ __('ui.subtotal') }}</span><strong x-text="money(subtotal())"></strong></div>
-            <div class="flex justify-between text-sm"><span>{{ __('ui.discount') }}</span><strong x-text="money(totalDiscount())"></strong></div>
-            <div class="flex justify-between border-t border-slate-200 pt-3 text-xl dark:border-slate-800"><span class="font-black">{{ __('ui.total') }}</span><strong x-text="money(total())"></strong></div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                <div class="flex justify-between text-sm"><span>{{ __('ui.subtotal') }}</span><strong x-text="money(subtotal())"></strong></div>
+                <div class="mt-2 flex justify-between text-sm text-slate-500"><span>{{ __('ui.discount') }}</span><strong x-text="money(totalDiscount())"></strong></div>
+                <div class="mt-3 flex justify-between border-t border-slate-200 pt-3 text-2xl dark:border-slate-800">
+                    <span class="font-black">{{ __('ui.total') }}</span>
+                    <strong class="text-brand-700 dark:text-brand-300" x-text="money(total())"></strong>
+                </div>
+            </div>
 
             <div x-show="canHold" class="grid grid-cols-2 gap-2">
                 <button class="btn-secondary" type="button" @click="holdCurrentSale()" :disabled="!cart.length || holding">
                     <span x-show="!holding">{{ __('ui.hold_sale') }}</span>
                     <span x-show="holding">{{ __('ui.holding_sale') }}</span>
+                    <kbd class="ms-2 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] dark:bg-slate-800">F9</kbd>
                 </button>
-                <button class="btn-secondary" type="button" @click="heldOpen=true; loadHeldSales()">
-                    {{ __('ui.held_sales') }} <span class="ms-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] dark:bg-slate-700" x-text="heldSales.length"></span>
+                <button class="btn-secondary" type="button" @click="openHeldSales()">
+                    {{ __('ui.held_sales') }}
+                    <span class="ms-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] dark:bg-slate-700" x-text="heldSales.length"></span>
+                    <kbd class="ms-2 hidden rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] sm:inline dark:bg-slate-800">Shift+F9</kbd>
                 </button>
             </div>
 
-            <button class="btn-primary w-full py-3.5" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
-                {{ __('ui.pay_and_complete') }}
+            <button class="btn-primary w-full py-4 text-base shadow-sm" type="button" @click="openSettlement()" :disabled="!cart.length || submitting">
+                <span>{{ __('ui.pay_and_complete') }}</span>
+                <kbd class="ms-2 rounded-md bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">F8</kbd>
             </button>
             <p class="text-xs leading-5 text-slate-500">{{ __('ui.payment_server_notice') }}</p>
         </div>
@@ -315,9 +357,10 @@
                     {{ __('ui.make_full_credit') }}
                 </button>
 
-                <button class="btn-primary mt-4 w-full py-3.5" type="button" @click="completeSale()" :disabled="submitting || (requiresOpenShift() && !hasOpenShift)">
+                <button class="btn-primary mt-4 w-full py-4 text-base" type="button" @click="completeSale()" :disabled="submitting || (requiresOpenShift() && !hasOpenShift)">
                     <span x-show="!submitting">{{ __('ui.confirm_checkout') }}</span>
                     <span x-show="submitting">{{ __('ui.posting_sale') }}</span>
+                    <kbd x-show="!submitting" class="ms-2 rounded-md bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">Ctrl+Enter</kbd>
                 </button>
             </aside>
         </div>
@@ -461,10 +504,80 @@ function posWorkspace(config) {
             this.searchProducts(true);
         },
 
+        focusSearch() {
+            this.$nextTick(() => {
+                const search = this.$refs?.search;
+
+                if (!this.paymentOpen && !this.heldOpen && search && typeof search.focus === 'function') {
+                    search.focus({preventScroll: true});
+                }
+            });
+        },
+
+        isTypingTarget(event) {
+            const target = event.target;
+
+            return target instanceof HTMLElement
+                && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+        },
+
+        handleShortcut(event) {
+            if (event.defaultPrevented || event.repeat) return;
+
+            if (event.key === 'F2') {
+                event.preventDefault();
+                this.paymentOpen = false;
+                this.heldOpen = false;
+                this.focusSearch();
+                return;
+            }
+
+            if (event.key === 'F8') {
+                event.preventDefault();
+
+                if (!this.paymentOpen && !this.heldOpen && this.cart.length) {
+                    this.openSettlement();
+                }
+
+                return;
+            }
+
+            if (event.key === 'F9' && event.shiftKey) {
+                event.preventDefault();
+
+                if (this.canHold && !this.paymentOpen) {
+                    this.openHeldSales();
+                }
+
+                return;
+            }
+
+            if (event.key === 'F9') {
+                event.preventDefault();
+
+                if (this.canHold && !this.paymentOpen && !this.heldOpen && this.cart.length && !this.holding) {
+                    this.holdCurrentSale();
+                }
+
+                return;
+            }
+
+            if (event.ctrlKey && !event.metaKey && !event.altKey && event.key === 'Enter') {
+                if (this.paymentOpen) {
+                    event.preventDefault();
+                    this.completeSale();
+                }
+
+                return;
+            }
+
+            if (this.isTypingTarget(event)) return;
+        },
+
         clearSearch() {
             this.query = '';
             this.results = [];
-            this.$nextTick(() => this.$refs.search.focus());
+            this.focusSearch();
         },
 
         addProduct(product) {
@@ -481,7 +594,7 @@ function posWorkspace(config) {
 
         removeItem(index) {
             this.cart.splice(index, 1);
-            this.$nextTick(() => this.$refs.search.focus());
+            this.focusSearch();
         },
 
         changeQty(index, delta) {
@@ -544,11 +657,20 @@ function posWorkspace(config) {
 
             this.message = '';
             this.checkoutMessage = '';
+            this.heldOpen = false;
             this.paymentOpen = true;
 
             if (!this.payments.length) {
                 this.resetDefaultPayment();
             }
+        },
+
+        openHeldSales() {
+            if (!this.canHold) return;
+
+            this.paymentOpen = false;
+            this.heldOpen = true;
+            this.loadHeldSales();
         },
 
         resetDefaultPayment() {
@@ -817,7 +939,7 @@ function posWorkspace(config) {
                 this.resetHoldKey();
                 this.heldOpen = false;
                 await this.loadHeldSales();
-                this.$nextTick(() => this.$refs.search.focus());
+                this.focusSearch();
             } catch (error) {
                 this.message = error.message || config.labels.holdFailed;
             }
@@ -857,7 +979,7 @@ function posWorkspace(config) {
             this.customerQuery = '';
             this.customerResults = [];
             this.resetSaleKey();
-            this.$nextTick(() => this.$refs.search.focus());
+            this.focusSearch();
         },
 
         async completeSale() {
