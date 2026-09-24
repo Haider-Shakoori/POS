@@ -13,12 +13,20 @@ class ProductSearchService
     {
     }
 
-    public function search(string $term, int $limit = 20): Collection
+    public function search(string $term, int $limit = 30): Collection
     {
         $term = trim($term);
 
         if ($term === '') {
-            return collect();
+            return ProductUnit::query()
+                ->with(['product.barcodes', 'unit'])
+                ->where('can_sell', true)
+                ->whereHas('product', fn ($query) => $query->where('is_active', true))
+                ->orderBy('id')
+                ->limit($limit)
+                ->get()
+                ->map(fn (ProductUnit $productUnit) => $this->transform($productUnit))
+                ->values();
         }
 
         $exactBarcode = ProductBarcode::query()
